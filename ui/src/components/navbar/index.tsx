@@ -76,7 +76,7 @@ const ConnectButton = () => (
         className="fixed top-0 left-0 right-0 bg-white/10 backdrop-blur-xl p-2 shadow-lg dark:bg-[#0b14374d] z-50"
       >
         <div className="flex justify-between items-center">
-          <span className="text-white font-bold text-xl">#Predict.AI</span>
+          <span className="text-navy-800 font-bold text-xl">OpenMarkets.AI</span>
           <div className="flex items-center space-x-2">
             {!isMobile && <NavContent position="top" />}
 <WalletButton/>
@@ -109,7 +109,7 @@ const ConnectButton = () => (
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 max-w-sm w-full shadow-lg dark:bg-[#0b14374d]"
             >
-              <h2 className="text-xl font-bold mb-4 text-white">Welcome to #Predict.AI!</h2>
+              <h2 className="text-xl font-bold mb-4 text-white">Welcome to OpenMarkets.AI!</h2>
               <p className="text-gray-300 mb-4">Let's quickly go through the main features of our prediction marketplace:</p>
               <ul className="list-disc pl-6 space-y-2 text-gray-300 mb-6">
                 <li>Leaders: See top performers</li>

@@ -28,7 +28,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    document.documentElement.classList.add('dark');
+    // document.documentElement.classList.add('dark');
 
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
