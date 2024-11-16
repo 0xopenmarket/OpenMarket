@@ -31,7 +31,7 @@ const PvPPredictionCard = () => {
 
   // Socket connection
   useEffect(() => {
-    const newSocket = io('process.env.NEXT_PUBLIC_SERVER_URL_MULTIPLAYER');
+    const newSocket = io(process.env.NEXT_PUBLIC_SERVER_URL_MULTIPLAYER);
     setSocket(newSocket);
 
     newSocket.on('waiting', () => {
