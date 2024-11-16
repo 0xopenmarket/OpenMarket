@@ -125,38 +125,121 @@ class Game {
   }
 
   calculateWinners() {
+    if (this.guesses.size === 0) return [];
+
+    // Calculate absolute differences from final price for each player
     const differences = new Map();
     this.guesses.forEach((guess, playerId) => {
-      differences.set(playerId, Math.abs(this.finalPrice - guess));
+      const difference = Math.abs(this.finalPrice - guess);
+      differences.set(playerId, {
+        playerId,
+        guess,
+        difference
+      });
     });
 
-    if (differences.size === 0) return [];
+    // Find the smallest difference
+    let closestDifference = Infinity;
+    let closestPlayer = null;
 
-    const minDifference = Math.min(...differences.values());
-    return Array.from(differences.entries())
-      .filter(([_, diff]) => diff === minDifference)
-      .map(([playerId]) => playerId);
+    differences.forEach(({ playerId, guess, difference }) => {
+      if (difference < closestDifference) {
+        closestDifference = difference;
+        closestPlayer = playerId;
+      }
+    });
+
+    // Return array with the winner
+    return closestPlayer ? [closestPlayer] : [];
+  }
+
+  async endGame() {
+    if (this.finished) return;
+    
+    try {
+      this.finished = true;
+      this.finalPrice = await getCurrentPrice();
+
+      const winners = this.calculateWinners();
+      const results = {
+        finalPrice: this.finalPrice,
+        initialPrice: this.initialPrice,
+        guesses: Object.fromEntries(this.guesses),
+        winners,
+        // Add detailed results for UI
+        details: Array.from(this.guesses).map(([playerId, guess]) => ({
+          playerId,
+          guess,
+          difference: Math.abs(this.finalPrice - guess),
+          isWinner: winners.includes(playerId)
+        })).sort((a, b) => a.difference - b.difference)
+      };
+
+      // Notify all players
+      this.players.forEach(playerId => {
+        const playerResults = {
+          ...results,
+          isWinner: winners.includes(playerId),
+          yourGuess: this.guesses.get(playerId),
+          message: this.getResultMessage(playerId, results)
+        };
+        
+        io.to(playerId).emit('gameEnd', playerResults);
+        this.updatePlayerStats(playerId, results);
+      });
+
+      this.cleanup();
+    } catch (error) {
+      console.error('Game end error:', error);
+      this.cleanup();
+    }
+  }
+
+  getResultMessage(playerId, results) {
+    if (results.winners.includes(playerId)) {
+      return 'You had the closest prediction!';
+    }
+
+    const playerGuess = this.guesses.get(playerId);
+    if (!playerGuess) {
+      return 'You didn\'t make a prediction in time';
+    }
+
+    const difference = Math.abs(this.finalPrice - playerGuess);
+    const percentage = ((difference / this.finalPrice) * 100).toFixed(1);
+    return `You were off by ${percentage}%`;
   }
 
   updatePlayerStats(playerId, results) {
     const stats = playerStats.get(playerId) || {
       gamesPlayed: 0,
       wins: 0,
-      totalGuesses: []
+      totalGuesses: [],
+      averageAccuracy: 0
     };
 
-    stats.gamesPlayed++;
-    if (results.winners.includes(playerId)) {
-      stats.wins++;
+    const playerGuess = this.guesses.get(playerId);
+    if (playerGuess) {
+      const accuracy = 100 - (Math.abs(this.finalPrice - playerGuess) / this.finalPrice * 100);
+      
+      stats.gamesPlayed++;
+      if (results.winners.includes(playerId)) {
+        stats.wins++;
+      }
+      
+      stats.totalGuesses.push({
+        guess: playerGuess,
+        actual: this.finalPrice,
+        accuracy,
+        timestamp: Date.now()
+      });
+
+      // Update average accuracy
+      stats.averageAccuracy = stats.totalGuesses.reduce((acc, g) => acc + g.accuracy, 0) / stats.totalGuesses.length;
     }
-    stats.totalGuesses.push({
-      guess: this.guesses.get(playerId),
-      actual: results.finalPrice
-    });
 
     playerStats.set(playerId, stats);
   }
-
   cleanup() {
     this.players.forEach(playerId => {
       activeGames.delete(playerId);

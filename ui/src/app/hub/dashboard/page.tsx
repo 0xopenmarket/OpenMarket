@@ -21,6 +21,7 @@ import { abi } from '../../../abi';
 import { parseEther, formatEther } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import PvPPredictionCard from 'components/card/PvPCard';
 
 // Contract Constants
 const contractAddress = 
@@ -361,7 +362,8 @@ const Dashboard = () => {
 
       {/* Popular Predictions Carousel */}
 
-
+<PvPPredictionCard />
+<br/>
       {/* Predictions Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {predictionIds.map((id) => (
