@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Home, BarChart2, User } from 'lucide-react';
+import { Home, BarChart2, User, Wallet } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DynamicWidget } from '@dynamic-labs/sdk-react-core';
-
+import {usePrivy, useWallets} from '@privy-io/react-auth';
+import WalletButton from "./WalletButtons";
 const NavBar = ({ isMobile }) => {
   const [activeTab, setActiveTab] = useState('predict');
   const [showTutorial, setShowTutorial] = useState(false);
   const router = useRouter();
+  const {ready, user, authenticated, login, connectWallet, logout, linkWallet} = usePrivy();
 
   useEffect(() => {
     const hasSeenTutorial = localStorage.getItem('hasSeenTutorial');
@@ -15,7 +17,17 @@ const NavBar = ({ isMobile }) => {
       setShowTutorial(true);
     }
   }, []);
-
+const ConnectButton = () => (
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={connectWallet}
+      className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-blue-500/25"
+    >
+      <Wallet size={20} />
+      <span>{authenticated ? 'Connected' : 'Connect Wallet'}</span>
+    </motion.button>
+  );
   const handleCloseTutorial = () => {
     setShowTutorial(false);
     localStorage.setItem('hasSeenTutorial', 'true');
@@ -64,11 +76,11 @@ const NavBar = ({ isMobile }) => {
         className="fixed top-0 left-0 right-0 bg-white/10 backdrop-blur-xl p-2 shadow-lg dark:bg-[#0b14374d] z-50"
       >
         <div className="flex justify-between items-center">
-          <span className="text-navy-600 font-bold text-xl">OpenMarkets.AI</span>
+          <span className="text-white font-bold text-xl">OpenMarkets.AI</span>
           <div className="flex items-center space-x-2">
             {!isMobile && <NavContent position="top" />}
-            <DynamicWidget />
-          </div>
+<WalletButton/>
+            </div>
         </div>
       </motion.nav>
 
@@ -97,7 +109,7 @@ const NavBar = ({ isMobile }) => {
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 max-w-sm w-full shadow-lg dark:bg-[#0b14374d]"
             >
-              <h2 className="text-xl font-bold mb-4 text-white">Welcome to OpenMarkets.AI!</h2>
+              <h2 className="text-xl font-bold mb-4 text-white">Welcome to #Predict.AI!</h2>
               <p className="text-gray-300 mb-4">Let's quickly go through the main features of our prediction marketplace:</p>
               <ul className="list-disc pl-6 space-y-2 text-gray-300 mb-6">
                 <li>Leaders: See top performers</li>

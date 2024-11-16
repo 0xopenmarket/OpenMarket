@@ -359,25 +359,29 @@ const Dashboard = () => {
       </div>
 
       {/* Popular Predictions Carousel */}
-      <PopularPredictionsCarousel />
+      {/* <PopularPredictionsCarousel /> */}
 
       {/* Predictions Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {predictionIds.map((id) => (
-          <PredictionCard
-            key={Number(id)}
-            predictionId={id}
-            usePredictionDetails={usePredictionDetails}
-            onPredict={handlePredict}
-            contractAddress={contractAddress}
-            abi={abi}
-            onInfoClick={() => {
-              setSelectedPrediction(id);
-              setIsInfoModalOpen(true);
-            }}
-          />
-        ))}
-      </div>
+      <div className="max-w-7xl mx-auto">
+            {/* Update the grid classes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
+              {predictionIds.map((id) => (
+                <div key={Number(id)} className="w-full">
+                  <PredictionCard
+                    predictionId={id}
+                    usePredictionDetails={usePredictionDetails}
+                    onPredict={handlePredict}
+                    contractAddress={contractAddress}
+                    abi={abi}
+                    onInfoClick={() => {
+                      setSelectedPrediction(id);
+                      setIsInfoModalOpen(true);
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+            </div>
 
       {/* Create Prediction Modal */}
       <CreatePredictionModal

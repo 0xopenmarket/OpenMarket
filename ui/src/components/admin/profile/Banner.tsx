@@ -44,7 +44,7 @@ const Banner = () => {
         <h4 className="text-xl font-bold text-navy-700 dark:text-white">
           {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connect Wallet'}
         </h4>
-        <h5 className="text-base font-normal text-gray-600">Prediction Market Player</h5>
+        {/* <h5 className="text-base font-normal text-gray-600">Prediction Market Player</h5> */}
       </div>
 
       {/* User stats */}

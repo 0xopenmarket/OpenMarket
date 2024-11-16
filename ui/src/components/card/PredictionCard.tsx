@@ -22,6 +22,8 @@ import { parseEther, formatEther } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { useRouter } from 'next/navigation';
+import { Info } from 'lucide-react';
 
 interface PredictionCardProps {
   predictionId: bigint;
@@ -57,7 +59,7 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
   const { data: prediction, isLoading } = usePredictionDetails(predictionId);
   const { address } = useAccount();
   const { writeContract } = useWriteContract();
-
+const router = useRouter();
   // Mock data for charts
   const priceHistory = Array.from({ length: 24 }, (_, i) => ({
     time: `${23-i}h ago`,
@@ -253,6 +255,10 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
   const isFinalized = status === 1;
   const isCancelled = status === 2;
   const totalEth = Number(totalBetAmount) / 1e18;
+  const handleDetailsClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click navigation
+    router.push(`/hub/predictions/${predictionId}`);
+  };
 
   return (
     <>
@@ -278,7 +284,15 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
                 <IoInformationCircle size={20} />
               </button>
             </div>
-
+            <div className="px-4 pb-4">
+        <button
+          onClick={handleDetailsClick}
+          className="w-full py-2 px-4 bg-gray-100 dark:bg-navy-700 hover:bg-gray-200 dark:hover:bg-navy-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+        >
+          <Info className="h-4 w-4" />
+          View Details
+        </button>
+      </div>
             {/* Stats Row */}
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-3">

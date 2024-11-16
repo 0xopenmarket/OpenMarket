@@ -127,7 +127,9 @@ contract AdvancedPredictionMarket is AccessControl {
     mapping(string => uint256[]) public categoryToMarkets;
     mapping(string => bool) public verifiedCategories;
     mapping(address => bool) public verifiedCreators;
-
+    address[] public verifiedCretorsList;
+    string[] public categories;
+    string[] public verifiedCategoriesList;
     uint256 private _marketIds;
     uint256 public minMarketDuration;
     uint256 public maxMarketDuration;
@@ -214,8 +216,7 @@ contract AdvancedPredictionMarket is AccessControl {
     ) external payable onlyVerifiedCreator {
         require(msg.value >= MIN_STAKE, "Insufficient stake");
         require(_duration >= minMarketDuration && _duration <= maxMarketDuration, "Invalid duration");
-        require(verifiedCategories[_category], "Invalid category");
-
+        categories.push(_category);
         uint256 marketId = _marketIds;
         _marketIds++;
 
@@ -545,10 +546,26 @@ contract AdvancedPredictionMarket is AccessControl {
 
     function addVerifiedCategory(string memory category) external onlyRole(ADMIN_ROLE) {
         verifiedCategories[category] = true;
+        verifiedCategoriesList.push(category);
+    }
+
+    function removeVerifiedCategory(string memory category) external onlyRole(ADMIN_ROLE) {
+        verifiedCategories[category] = false;
+        verifiedCategoriesList.pop();
     }
 
     function verifyCreator(address creator) external onlyRole(ADMIN_ROLE) {
         verifiedCreators[creator] = true;
+        verifiedCretorsList.push(creator);
+    }
+
+    function unVerifyCreator(address creator) external onlyRole(ADMIN_ROLE) {
+        verifiedCreators[creator] = false;
+        verifiedCretorsList.pop();
+    }
+
+    function getVerifiedCreator() public view returns (address[] memory) {
+        return verifiedCretorsList;
     }
 
     function setDisputeThreshold(uint256 threshold) external onlyRole(ADMIN_ROLE) {
@@ -585,6 +602,14 @@ contract AdvancedPredictionMarket is AccessControl {
             market.tags,
             market.disputeStatus
         );
+    }
+
+    function getCategories() public view returns (string[] memory) {
+        return categories;
+    }
+
+    function getVerifiedCategories() public view returns (string[] memory) {
+        return verifiedCategoriesList;
     }
 
     function getUserPositions(address user, uint256 marketId)
@@ -631,4 +656,3 @@ contract AdvancedPredictionMarket is AccessControl {
     receive() external payable {}
     fallback() external payable {}
 }
-
