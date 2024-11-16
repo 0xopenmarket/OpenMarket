@@ -95,37 +95,6 @@ const ConnectButton = () => (
         </motion.nav>
       )}
 
-      <AnimatePresence>
-        {showTutorial && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-70"
-          >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 max-w-sm w-full shadow-lg dark:bg-[#0b14374d]"
-            >
-              <h2 className="text-xl font-bold mb-4 text-white">Welcome to #Predict.AI!</h2>
-              <p className="text-gray-300 mb-4">Let's quickly go through the main features of our prediction marketplace:</p>
-              <ul className="list-disc pl-6 space-y-2 text-gray-300 mb-6">
-                <li>Leaders: See top performers</li>
-                <li>Predict: Make your predictions</li>
-                <li>Profile: View your activity and settings</li>
-              </ul>
-              <button 
-                onClick={handleCloseTutorial}
-                className="w-full bg-blue-500 text-white rounded-lg py-2 font-semibold hover:bg-blue-600 transition-colors"
-              >
-                Got it, let's start!
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
   );
 };
