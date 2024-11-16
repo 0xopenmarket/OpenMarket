@@ -1,10 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { IoAdd, IoRemove, IoTimeOutline, IoWalletOutline, IoTrailSign, IoCheckmark, IoClose, IoCash, IoBulb } from 'react-icons/io5';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  IoAdd, 
+  IoRemove, 
+  IoTimeOutline, 
+  IoWalletOutline, 
+  IoTrailSign, 
+  IoCheckmark, 
+  IoClose, 
+  IoCash, 
+  IoBulb,
+  IoInformationCircle,
+  IoStatsChart,
+  IoPeople,
+  IoTrendingUp,
+  IoChevronForward,
+  IoChevronBack
+} from 'react-icons/io5';
 import { useReadContract, useWriteContract, useAccount } from 'wagmi';
-import { parseEther } from 'viem';
+import { parseEther, formatEther } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import axios from 'axios';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface PredictionCardProps {
   predictionId: bigint;
@@ -24,20 +41,32 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
   contractAddress,
   abi
 }) => {
+  // State management
   const [shareAmount, setShareAmount] = useState(1);
   const [isYesSelected, setIsYesSelected] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isOracle, setIsOracle] = useState(false);
   const [outcome, setOutcome] = useState<number>(0);
   const [isAIFinalizing, setIsAIFinalizing] = useState(false);
+  const [isDetailsVisible, setIsDetailsVisible] = useState(false);
+  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
+  const [testFinalizeData, setTestFinalizeData] = useState<any>(null);
+  const [currentView, setCurrentView] = useState<'main' | 'details' | 'predict'>('main');
+  const [selectedTab, setSelectedTab] = useState<'overview' | 'history' | 'stats'>('overview');
+
   const { data: prediction, isLoading } = usePredictionDetails(predictionId);
   const { address } = useAccount();
   const { writeContract } = useWriteContract();
 
-  const [testFinalizeData, setTestFinalizeData] = useState<any>(null);
-  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
+  // Mock data for charts
+  const priceHistory = Array.from({ length: 24 }, (_, i) => ({
+    time: `${23-i}h ago`,
+    yes: 50 + Math.sin(i * 0.5) * 20 + Math.random() * 10,
+    no: 50 - Math.sin(i * 0.5) * 20 + Math.random() * 10,
+    volume: Math.random() * 3 + 0.5
+  })).reverse();
 
-
+  // Contract reads
   const { data: hasAdminRole } = useReadContract({
     address: contractAddress,
     abi: abi,
@@ -52,6 +81,7 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
     args: [ORACLE_ROLE, address as `0x${string}`],
   });
 
+  // Derived state
   const [isPredictionEnded, setIsPredictionEnded] = useState(false);
 
   useEffect(() => {
@@ -60,6 +90,19 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
       setIsPredictionEnded(Date.now() / 1000 > Number(endTime));
     }
   }, [prediction]);
+
+  useEffect(() => {
+    setIsAdmin(!!hasAdminRole);
+    setIsOracle(!!hasOracleRole);
+  }, [hasAdminRole, hasOracleRole]);
+
+  // Handlers
+  const handleIncrement = () => setShareAmount(prev => prev + 1);
+  const handleDecrement = () => setShareAmount(prev => Math.max(1, prev - 1));
+
+  const handlePredict = () => {
+    onPredict(Number(predictionId), isYesSelected, shareAmount);
+  };
 
   const handleFinalize = async (useAI = false) => {
     if (!address) return;
@@ -87,8 +130,6 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
         chain: baseSepolia,
         account: address
       });
-      
-      console.log(`Prediction finalized ${useAI ? 'with AI' : 'by admin'}`);
     } catch (error) {
       console.error('Error finalizing prediction:', error);
     } finally {
@@ -96,20 +137,10 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
     }
   };
 
-  useEffect(() => {
-    setIsAdmin(!!hasAdminRole);
-    setIsOracle(!!hasOracleRole);
-  }, [hasAdminRole, hasOracleRole]);
-
-  const handleIncrement = () => setShareAmount(prev => prev + 1);
-  const handleDecrement = () => setShareAmount(prev => Math.max(1, prev - 1));
-
-  const handlePredict = () => {
-    onPredict(Number(predictionId), isYesSelected, shareAmount);
-  };
-
-
   const handleTestFinalize = async () => {
+    if (!prediction) return;
+    const [description] = prediction;
+    
     try {
       setIsAIFinalizing(true);
       const response = await axios.post('https://ai-predict-fcdw.onrender.com/test/finalize-prediction', {
@@ -135,13 +166,11 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
         chain: baseSepolia,
         account: address
       });
-      console.log('Prediction finalized based on test data');
       setIsTestModalOpen(false);
     } catch (error) {
       console.error('Error finalizing prediction:', error);
     }
   };
-
 
   const handleCancel = async () => {
     if (!address) return;
@@ -175,6 +204,7 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
     }
   };
 
+  // Utility functions
   const formatTime = (timestamp: bigint) => {
     const date = new Date(Number(timestamp) * 1000);
     return date.toLocaleString('en-US', { 
@@ -191,6 +221,7 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
     return totalNum > 0 ? (votesNum / totalNum) * 100 : 50;
   };
 
+  // Loading state
   if (isLoading) {
     return (
       <div className="w-full h-64 p-4 flex items-center justify-center bg-white dark:bg-navy-800 rounded-xl shadow-lg overflow-hidden">
@@ -207,9 +238,7 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
     );
   }
 
-  if (!prediction) {
-    return null;
-  }
+  if (!prediction) return null;
 
   const [description, endTime, status, totalVotes, predictionOutcome, minVotes, maxVotes, predictionType, creator, creationTime, tags, optionsCount, totalBetAmount] = prediction;
 
@@ -223,287 +252,567 @@ const PredictionCard: React.FC<PredictionCardProps> = ({
   const isActive = status === 0;
   const isFinalized = status === 1;
   const isCancelled = status === 2;
-  const totalEth = Number(totalBetAmount) / 1e18; // Convert from Wei to ETH
+  const totalEth = Number(totalBetAmount) / 1e18;
 
   return (
-    <div className="w-full h-full bg-white dark:bg-navy-800 rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl border border-gray-200 dark:border-navy-700 flex flex-col">
-      <div className="p-4 flex-grow">
-        <h2 className=" font-bold text-navy-700 dark:text-white mb-2 line-clamp-4">
-          {description}
-        </h2>
-        <div className="flex items-center justify-between mb-4 text-sm text-gray-600 dark:text-gray-400">
-          <div className="flex items-center">
-            <IoTimeOutline className="mr-1" />
-            <span>Ends: {formatTime(endTime)}</span>
-          </div>
-          <div className="flex items-center">
-            <IoWalletOutline className="mr-1" />
-            <span>{totalEth.toFixed(4)} ETH</span>
-          </div>
-        </div>
-        
-        <div className="flex items-center space-x-2 mb-4">
-          <div className="flex-grow">
-            <div className="w-full bg-gray-200 dark:bg-navy-700 rounded-full h-2 overflow-hidden">
-              <motion.div 
-                className="h-full rounded-full bg-gradient-to-r from-green-400 to-brand-500 dark:from-green-500 dark:to-brand-400"
-                initial={{ width: 0 }}
-                animate={{ width: `${yesPercentage}%` }}
-                transition={{ duration: 0.5 }}
-              />
-            </div>
-          </div>
-          <span className="text-sm font-medium text-green-500 dark:text-green-400 w-12 text-right">{yesPercentage.toFixed(1)}%</span>
-          <span className="text-sm font-medium text-red-500 dark:text-red-400 w-12 text-right">{noPercentage.toFixed(1)}%</span>
-        </div>
-
-        <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-2">
-          <IoTrailSign className="mr-1" />
-          {tags.map((tag, index) => (
-            <span key={index} className="mr-2 bg-gray-200 dark:bg-navy-700 px-2 py-1 rounded-full text-xs">
-              {tag}
-            </span>
-          ))}
-        </div>
-
-        <div className="text-xs text-gray-500 dark:text-gray-400">
-          <p>Min Votes: {Number(minVotes)}</p>
-          <p>Creator: {creator.slice(0, 6)}...{creator.slice(-4)}</p>
-          <p>Created: {formatTime(creationTime)}</p>
-          <p>Status: {isActive ? 'Active' : isFinalized ? 'Finalized' : 'Cancelled'}</p>
-          {isFinalized && <p>Outcome: {Number(predictionOutcome) === 0 ? 'Yes' : 'No'}</p>}
-        </div>
-      </div>
-
-      {isActive && (
-        <div className="p-4 bg-gray-50 dark:bg-navy-900">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-2 flex-grow">
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsYesSelected(true)}
-                className={`py-2 px-4 rounded-lg transition-colors duration-200 text-sm font-medium flex-1 ${
-                  isYesSelected 
-                    ? 'bg-green-500 text-white' 
-                    : 'bg-gray-200 dark:bg-navy-700 text-gray-700 dark:text-gray-300'
-                }`}
+    <>
+      <motion.div 
+        className="w-full bg-white dark:bg-navy-800 rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl border border-gray-200 dark:border-navy-700"
+        layout
+      >
+        <div className="relative">
+          {/* Main Content */}
+          <motion.div
+            className="p-4"
+            animate={{ x: currentView === 'main' ? 0 : '-100%' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="font-bold text-navy-700 dark:text-white line-clamp-2 flex-grow">
+                {description}
+              </h2>
+              <button
+                onClick={() => setCurrentView('details')}
+                className="ml-2 p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-navy-700 transition-colors"
               >
-                Yes
-              </motion.button>
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsYesSelected(false)}
-                className={`py-2 px-4 rounded-lg transition-colors duration-200 text-sm font-medium flex-1 ${
-                  !isYesSelected 
-                    ? 'bg-red-500 text-white' 
-                    : 'bg-gray-200 dark:bg-navy-700 text-gray-700 dark:text-gray-300'
-                }`}
-              >
-                No
-              </motion.button>
+                <IoInformationCircle size={20} />
+              </button>
             </div>
-          </div>
-          <div className="flex items-center space-x-2 mb-3">
-            <motion.button 
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={handleDecrement}
-              className="bg-gray-200 dark:bg-navy-700 text-gray-700 dark:text-gray-300 rounded-full p-1"
-            >
-              <IoRemove size={14} />
-            </motion.button>
-            <input 
-              type="number" 
-              value={shareAmount}
-              onChange={(e) => setShareAmount(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-16 text-center border dark:border-navy-600 rounded-lg py-1 bg-white dark:bg-navy-900 text-gray-700 dark:text-gray-300 text-sm"
-            />
-            <motion.button 
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={handleIncrement}
-              className="bg-gray-200 dark:bg-navy-700 text-gray-700 dark:text-gray-300 rounded-full p-1"
-            >
-              <IoAdd size={14} />
-            </motion.button>
-          </div>
-          <motion.button 
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handlePredict}
-            className="w-full bg-gradient-to-r from-brand-400 to-brand-500 dark:from-brand-500 dark:to-brand-400 text-white rounded-lg py-2 px-4 transition-all duration-200 text-sm font-medium"
-          >
-            Predict
-          </motion.button>
-        </div>
-      )}
-      {isActive && isPredictionEnded && (
-                <div className="p-4 bg-gray-50 dark:bg-navy-900 border-t border-gray-200 dark:border-navy-700">
-          <div className="flex flex-col space-y-2"></div>
-            <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => handleTestFinalize()}
-            disabled={isAIFinalizing}
-            className="w-full bg-purple-500 text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center justify-center"
-          >
-           {isAIFinalizing ? (
-             <>
-               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-               Testing AI Finalization...
-             </>
-           ) : (
-             <>
-               <IoBulb className="mr-1" /> Test AI Finalization
-             </>
-           )}
-         </motion.button>
-         </div>
-      )}
-        {isTestModalOpen && testFinalizeData && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-navy-800 p-6 rounded-lg max-w-md w-full shadow-xl"
-            >
-              <h3 className="text-lg font-bold mb-4 text-navy-700 dark:text-white">Test Finalization Result</h3>
-              <p className="text-gray-700 dark:text-gray-300"><strong>Outcome:</strong> {testFinalizeData.outcome === 1 ? 'Yes' : 'No'}</p>
-              <p className="text-gray-700 dark:text-gray-300"><strong>Confidence:</strong> {(testFinalizeData.confidence * 100).toFixed(2)}%</p>
-              <p className="text-gray-700 dark:text-gray-300"><strong>Explanation:</strong> {testFinalizeData.explanation}</p>
-              <div className="mt-4 flex justify-end space-x-2">
+
+            {/* Stats Row */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-3">
+                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                  <IoTimeOutline className="mr-1" />
+                  <span>Ends {formatTime(endTime)}</span>
+                </div>
+              </div>
+              <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-3">
+                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                  <IoWalletOutline className="mr-1" />
+                  <span>{totalEth.toFixed(4)} ETH</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Voting Distribution */}
+            <div className="mb-4">
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-green-500 font-medium">Yes {yesPercentage.toFixed(1)}%</span>
+                <span className="text-red-500 font-medium">No {noPercentage.toFixed(1)}%</span>
+              </div>
+              <div className="relative h-2 bg-gray-200 dark:bg-navy-700 rounded-full overflow-hidden">
+                <motion.div
+                  className="absolute left-0 top-0 h-full bg-gradient-to-r from-green-400 to-green-500"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${yesPercentage}%` }}
+                  transition={{ duration: 0.5 }}
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            {isActive && (
+              <div className="flex space-x-2">
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setIsTestModalOpen(false)}
-                  className="px-4 py-2 bg-gray-300 dark:bg-navy-600 text-gray-800 dark:text-white rounded transition-colors duration-200"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setCurrentView('predict')}
+                  className="flex-1 py-2 px-4 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-sm font-medium transition-colors"
                 >
-                  Cancel
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleConfirmFinalize}
-                  className="px-4 py-2 bg-blue-500 text-white rounded transition-colors duration-200"
-                >
-                  Confirm Finalization
+                  Place Prediction
                 </motion.button>
               </div>
-            </motion.div>
+            )}
           </motion.div>
-        )}
 
+          {/* Details View */}
+          <motion.div
+            className="absolute top-0 left-0 w-full h-full bg-white dark:bg-navy-800"
+            initial={{ x: '100%' }}
+            animate={{ x: currentView === 'details' ? 0 : '100%' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          >
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <button
+                  onClick={() => setCurrentView('main')}
+                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-navy-700 transition-colors"
+                >
+                  <IoChevronBack size={20} />
+                </button>
+                <h3 className="text-lg font-bold text-navy-700 dark:text-white">
+                  Prediction Details
+                </h3>
+                <div className="w-8" /> {/* Spacer for alignment */}
+              </div>
 
+{/* Tabs */}
+<div className="flex border-b border-gray-200 dark:border-navy-700 mb-4">
+                {['overview', 'history', 'stats'].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setSelectedTab(tab as any)}
+                    className={`px-4 py-2 text-sm font-medium transition-colors relative ${
+                      selectedTab === tab
+                        ? 'text-brand-500 dark:text-brand-400'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                    }`}
+                  >
+                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    {selectedTab === tab && (
+                      <motion.div
+                        layoutId="activeTab"
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-500 dark:bg-brand-400"
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
 
-      {isAdmin && isActive && isPredictionEnded && (
-        <div className="p-4 bg-gray-50 dark:bg-navy-900 border-t border-gray-200 dark:border-navy-700">
-          <div className="flex flex-col space-y-2">
-            <div className="flex items-center space-x-2 mb-2">
-              <select 
-                value={outcome}
-                onChange={(e) => setOutcome(parseInt(e.target.value))}
-                className="flex-grow p-2 border rounded dark:bg-navy-700 dark:border-navy-600"
-              >
-                <option value={0}>Yes</option>
-                <option value={1}>No</option>
-              </select>
+              {/* Tab Content */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={selectedTab}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                >
+                  {selectedTab === 'overview' && (
+                    <div className="space-y-4">
+                      <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-4">
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Description
+                        </h4>
+                        <p className="text-gray-600 dark:text-gray-400">
+                          {description}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-4">
+                          <div className="text-sm text-gray-600 dark:text-gray-400">Created</div>
+                          <div className="font-medium text-navy-700 dark:text-white">
+                            {formatTime(creationTime)}
+                          </div>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-4">
+                          <div className="text-sm text-gray-600 dark:text-gray-400">Status</div>
+                          <div className="font-medium text-navy-700 dark:text-white">
+                            {isActive ? 'Active' : isFinalized ? 'Finalized' : 'Cancelled'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-4">
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Tags
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {tags.map((tag, index) => (
+                            <span
+                              key={index}
+                              className="px-3 py-1 bg-gray-200 dark:bg-navy-700 text-gray-700 dark:text-gray-300 rounded-full text-sm"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedTab === 'history' && (
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={priceHistory}>
+                          <XAxis dataKey="time" stroke="#9CA3AF" />
+                          <YAxis stroke="#9CA3AF" />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                              border: 'none',
+                              borderRadius: '8px',
+                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                            }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="yes"
+                            stroke="#10B981"
+                            strokeWidth={2}
+                            dot={false}
+                            name="Yes"
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="no"
+                            stroke="#EF4444"
+                            strokeWidth={2}
+                            dot={false}
+                            name="No"
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {selectedTab === 'stats' && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-4">
+                          <div className="text-sm text-gray-600 dark:text-gray-400">Total Volume</div>
+                          <div className="text-xl font-bold text-navy-700 dark:text-white">
+                            {totalEth.toFixed(4)} ETH
+                          </div>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-4">
+                          <div className="text-sm text-gray-600 dark:text-gray-400">Participants</div>
+                          <div className="text-xl font-bold text-navy-700 dark:text-white">
+                            {totalVotesCount}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-4">
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Vote Distribution
+                        </h4>
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">Yes</span>
+                            <span className="text-sm font-medium text-green-500">{yesPercentage.toFixed(1)}%</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">No</span>
+                            <span className="text-sm font-medium text-red-500">{noPercentage.toFixed(1)}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </motion.div>
+
+          {/* Prediction View */}
+          <motion.div
+            className="absolute top-0 left-0 w-full h-full bg-white dark:bg-navy-800"
+            initial={{ x: '100%' }}
+            animate={{ x: currentView === 'predict' ? 0 : '100%' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          >
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <button
+                  onClick={() => setCurrentView('main')}
+                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-navy-700 transition-colors"
+                >
+                  <IoChevronBack size={20} />
+                </button>
+                <h3 className="text-lg font-bold text-navy-700 dark:text-white">
+                  Place Prediction
+                </h3>
+                <div className="w-8" /> {/* Spacer for alignment */}
+              </div>
+
+              <div className="space-y-4">
+                {/* Yes/No Selection */}
+                <div className="flex space-x-2">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setIsYesSelected(true)}
+                    className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors ${
+                      isYesSelected
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-200 dark:bg-navy-700 text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    Yes ({yesPercentage.toFixed(1)}%)
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setIsYesSelected(false)}
+                    className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors ${
+                      !isYesSelected
+                        ? 'bg-red-500 text-white'
+                        : 'bg-gray-200 dark:bg-navy-700 text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    No ({noPercentage.toFixed(1)}%)
+                  </motion.button>
+                </div>
+
+                {/* Amount Selection */}
+                <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Amount (ETH)</span>
+                    <div className="flex items-center space-x-2">
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={handleDecrement}
+                        className="w-6 h-6 flex items-center justify-center bg-gray-200 dark:bg-navy-700 rounded-full"
+                      >
+                        <IoRemove size={14} />
+                      </motion.button>
+                      <input
+                        type="number"
+                        value={shareAmount}
+                        onChange={(e) => setShareAmount(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-16 text-center bg-transparent border-none text-navy-700 dark:text-white"
+                      />
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={handleIncrement}
+                        className="w-6 h-6 flex items-center justify-center bg-gray-200 dark:bg-navy-700 rounded-full"
+                      >
+                        <IoAdd size={14} />
+                      </motion.button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handlePredict}
+                  className="w-full py-3 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-medium transition-colors"
+                >
+                  Confirm Prediction
+                </motion.button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+        {/* Admin Controls Section */}
+        {isAdmin && isActive && isPredictionEnded && (
+          <div className="border-t border-gray-200 dark:border-navy-700">
+            <div className="p-4 space-y-3">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Admin Controls
+                </h4>
+                {isAIFinalizing && (
+                  <div className="flex items-center text-brand-500">
+                    <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2" />
+                    <span className="text-sm">Processing...</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Admin Actions Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Manual Finalization */}
+                <div className="flex items-center space-x-2">
+                  <select 
+                    value={outcome}
+                    onChange={(e) => setOutcome(parseInt(e.target.value))}
+                    className="flex-1 py-2 px-3 bg-gray-50 dark:bg-navy-900 border border-gray-200 dark:border-navy-700 rounded-lg text-sm"
+                  >
+                    <option value={0}>Yes</option>
+                    <option value={1}>No</option>
+                  </select>
+                  <motion.button 
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleFinalize(false)}
+                    className="py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium flex items-center"
+                  >
+                    <IoCheckmark className="mr-1" /> Manual
+                  </motion.button>
+                </div>
+
+                {/* AI Finalization */}
+                <motion.button 
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleTestFinalize}
+                  disabled={isAIFinalizing}
+                  className="w-full py-2 px-4 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm font-medium flex items-center justify-center"
+                >
+                  <IoBulb className="mr-1" />
+                  Test AI Resolution
+                </motion.button>
+              </div>
+
+              {/* Cancel Button */}
               <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => handleFinalize(false)}
-                className="bg-blue-500 text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleCancel}
+                className="w-full py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium flex items-center justify-center"
               >
-                <IoCheckmark className="mr-1" /> Admin Finalize
+                <IoClose className="mr-1" /> Cancel Prediction
               </motion.button>
             </div>
-            <motion.button 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => handleFinalize(true)}
-              disabled={isAIFinalizing}
-              className="w-full bg-purple-500 text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center justify-center"
-            >
-              {isAIFinalizing ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Finalizing with AI...
-                </>
-              ) : (
-                <>
-                  <IoBulb className="mr-1" /> Finalize with AI
-                </>
-              )}
-            </motion.button>
           </div>
-        </div>
-      )}
+        )}
 
-      {(isAdmin || isOracle) && isActive && (
-        <div className="p-4 bg-gray-50 dark:bg-navy-900 border-t border-gray-200 dark:border-navy-700">
-          <div className="flex flex-col space-y-2">
-            {isOracle && (
-              <div className="flex items-center space-x-2 mb-2">
+        {/* Oracle Controls */}
+        {isOracle && isActive && isPredictionEnded && !isAdmin && (
+          <div className="border-t border-gray-200 dark:border-navy-700">
+            <div className="p-4 space-y-3">
+              <div className="flex items-center space-x-2">
                 <select 
                   value={outcome}
                   onChange={(e) => setOutcome(parseInt(e.target.value))}
-                  className="flex-grow p-2 border rounded dark:bg-navy-700 dark:border-navy-600"
+                  className="flex-1 py-2 px-3 bg-gray-50 dark:bg-navy-900 border border-gray-200 dark:border-navy-700 rounded-lg text-sm"
                 >
                   <option value={0}>Yes</option>
                   <option value={1}>No</option>
                 </select>
                 <motion.button 
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => handleFinalize(false)}
-                  className="bg-blue-500 text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center"
+                  className="py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium flex items-center"
                 >
-                  <IoCheckmark className="mr-1" /> Finalize
+                  <IoCheckmark className="mr-1" /> Finalize as Oracle
                 </motion.button>
               </div>
-            )}
-            {isAdmin && (
+            </div>
+          </div>
+        )}
+
+        {/* Reward Distribution Section */}
+        {isAdmin && isFinalized && (
+          <div className="border-t border-gray-200 dark:border-navy-700">
+            <div className="p-4">
               <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleCancel}
-                className="bg-red-500 text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center justify-center"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleDistributeRewards}
+                className="w-full py-2 px-4 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium flex items-center justify-center"
               >
-                <IoClose className="mr-1" /> Cancel Prediction
+                <IoCash className="mr-1" /> Distribute Rewards
               </motion.button>
-            )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {isAdmin && isFinalized && (
-        <div className="p-4 bg-gray-50 dark:bg-navy-900 border-t border-gray-200 dark:border-navy-700">
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleDistributeRewards}
-            className="w-full bg-green-500 text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center justify-center"
+        {/* Status Indicator */}
+        {(isFinalized || isCancelled) && (
+          <div className="border-t border-gray-200 dark:border-navy-700">
+            <div className={`p-4 ${
+              isFinalized ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'
+            }`}>
+              <div className="flex items-center justify-center space-x-2">
+                {isFinalized ? (
+                  <>
+                    <IoCheckmark className="text-green-500" size={20} />
+                    <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                      Finalized: {predictionOutcome === 0 ? 'Yes' : 'No'} was correct
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <IoClose className="text-red-500" size={20} />
+                    <span className="text-sm font-medium text-red-700 dark:text-red-400">
+                      This prediction has been cancelled
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </motion.div>
+
+      {/* AI Test Modal */}
+      <AnimatePresence>
+        {isTestModalOpen && testFinalizeData && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setIsTestModalOpen(false)}
           >
-            <IoCash className="mr-1" /> Distribute Rewards
-          </motion.button>
-        </div>
-      )}
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-navy-800 rounded-xl max-w-lg w-full shadow-xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-6">
+                  <h3 className="text-lg font-bold text-navy-700 dark:text-white">
+                    AI Resolution Test
+                  </h3>
+                  <button
+                    onClick={() => setIsTestModalOpen(false)}
+                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  >
+                    <IoClose size={24} />
+                  </button>
+                </div>
 
-      {(isFinalized || isCancelled) && !isAdmin && (
-        <div className="p-4 bg-gray-50 dark:bg-navy-900 border-t border-gray-200 dark:border-navy-700">
-          <div className="text-center text-sm font-medium text-gray-600 dark:text-gray-400">
-            {isFinalized ? 'This prediction has been finalized.' : 'This prediction has been cancelled.'}
-          </div>
-        </div>
-      )}
-    </div>
+                <div className="space-y-4">
+                  {/* Test Results */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-4">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        Predicted Outcome
+                      </div>
+                      <div className={`text-lg font-bold ${
+                        testFinalizeData.outcome === 0 ? 'text-green-500' : 'text-red-500'
+                      }`}>
+                        {testFinalizeData.outcome === 0 ? 'Yes' : 'No'}
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-4">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        Confidence
+                      </div>
+                      <div className="text-lg font-bold text-brand-500">
+                        {(testFinalizeData.confidence * 100).toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Explanation */}
+                  <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-4">
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                      AI Reasoning
+                    </div>
+                    <p className="text-navy-700 dark:text-white">
+                      {testFinalizeData.explanation}
+                    </p>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex space-x-3">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setIsTestModalOpen(false)}
+                      className="flex-1 py-2 px-4 bg-gray-200 dark:bg-navy-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium"
+                    >
+                      Cancel
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleConfirmFinalize}
+                      className="flex-1 py-2 px-4 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-sm font-medium"
+                    >
+                      Confirm Resolution
+                    </motion.button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 
