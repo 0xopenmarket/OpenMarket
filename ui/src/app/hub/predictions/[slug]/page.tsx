@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { abi } from "../../../../abi";
 
-const CONTRACT_ADDRESS = '0x779d7026FA2100C97AE5E2e8381f6506D5Bf31D4';
+const CONTRACT_ADDRESS = '0x7ef2A5BBAa51FdCb732b1b30B8134FF23A303b3b';
 
 interface PredictionDetailsProps {
   prediction: any;

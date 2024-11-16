@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { baseSepolia, mantleSepoliaTestnet } from 'viem/chains';
+import { mantleSepoliaTestnet } from 'viem/chains';
 import { http } from 'viem';
 import NavBar from 'components/navbar';
 import { PrivyProvider } from '@privy-io/react-auth';
@@ -9,10 +9,10 @@ import { WagmiProvider, createConfig } from '@privy-io/wagmi';
 // Create configuration using getDefaultConfig
 
 export const config = createConfig({
-  chains: [baseSepolia, mantleSepoliaTestnet],
+  chains: [mantleSepoliaTestnet],
   transports: {
-    [baseSepolia.id]: http(),
     [mantleSepoliaTestnet.id]: http()
+
   }
 });
 

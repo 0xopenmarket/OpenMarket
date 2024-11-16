@@ -8,7 +8,7 @@ import { MdOutlineStar, MdHowToVote, MdAttachMoney } from 'react-icons/md';
 
 const Banner = () => {
   const { address } = useAccount();
-  const contractAddress = '0x779d7026FA2100C97AE5E2e8381f6506D5Bf31D4' as const; // Replace with your contract address
+  const contractAddress = '0x7ef2A5BBAa51FdCb732b1b30B8134FF23A303b3b' as const; // Replace with your contract address
 
   const { data: userStats } = useReadContract({
     address: contractAddress,

@@ -23,7 +23,8 @@ import { baseSepolia } from 'viem/chains';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 // Contract Constants
-const contractAddress = '0x779d7026FA2100C97AE5E2e8381f6506D5Bf31D4';
+const contractAddress = 
+'0x7ef2A5BBAa51FdCb732b1b30B8134FF23A303b3b';
 const PREDICTOR_ROLE = '0xfe9eaad5f5acc86dfc672d62b2c2acc0fccbdc369951a11924b882e2c44ed506';
 
 // Read Contract Hook
@@ -359,29 +360,25 @@ const Dashboard = () => {
       </div>
 
       {/* Popular Predictions Carousel */}
-      {/* <PopularPredictionsCarousel /> */}
+
 
       {/* Predictions Grid */}
-      <div className="max-w-7xl mx-auto">
-            {/* Update the grid classes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
-              {predictionIds.map((id) => (
-                <div key={Number(id)} className="w-full">
-                  <PredictionCard
-                    predictionId={id}
-                    usePredictionDetails={usePredictionDetails}
-                    onPredict={handlePredict}
-                    contractAddress={contractAddress}
-                    abi={abi}
-                    onInfoClick={() => {
-                      setSelectedPrediction(id);
-                      setIsInfoModalOpen(true);
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {predictionIds.map((id) => (
+          <PredictionCard
+            key={Number(id)}
+            predictionId={id}
+            usePredictionDetails={usePredictionDetails}
+            onPredict={handlePredict}
+            contractAddress={contractAddress}
+            abi={abi}
+            onInfoClick={() => {
+              setSelectedPrediction(id);
+              setIsInfoModalOpen(true);
+            }}
+          />
+        ))}
+      </div>
 
       {/* Create Prediction Modal */}
       <CreatePredictionModal
