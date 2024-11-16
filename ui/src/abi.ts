@@ -1,12 +1,8 @@
-export const abi = [
+export const abi =[
   {
     "type": "constructor",
     "inputs": [],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "fallback",
-    "stateMutability": "payable"
   },
   {
     "type": "receive",
@@ -15,32 +11,6 @@ export const abi = [
   {
     "type": "function",
     "name": "ADMIN_ROLE",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "CREATOR_FEE_PERCENTAGE",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "CREATOR_ROLE",
     "inputs": [],
     "outputs": [
       {
@@ -66,7 +36,7 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "DISPUTE_PERIOD",
+    "name": "FEE_PERCENTAGE",
     "inputs": [],
     "outputs": [
       {
@@ -79,7 +49,7 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "MAX_STAKE",
+    "name": "MAX_OPTIONS",
     "inputs": [],
     "outputs": [
       {
@@ -92,20 +62,7 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "MIN_STAKE",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "MODERATOR_ROLE",
+    "name": "MOD_ROLE",
     "inputs": [],
     "outputs": [
       {
@@ -131,7 +88,20 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "PLATFORM_FEE_PERCENTAGE",
+    "name": "PREDICTOR_ROLE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "VOTE_VALUE",
     "inputs": [],
     "outputs": [
       {
@@ -144,15 +114,10 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "addComment",
+    "name": "addValidTag",
     "inputs": [
       {
-        "name": "marketId",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "content",
+        "name": "_tag",
         "type": "string",
         "internalType": "string"
       }
@@ -162,46 +127,20 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "addVerifiedCategory",
+    "name": "calculatePotentialWinnings",
     "inputs": [
       {
-        "name": "category",
-        "type": "string",
-        "internalType": "string"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "cancelLimitOrder",
-    "inputs": [
-      {
-        "name": "marketId",
+        "name": "_predictionId",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "orderId",
+        "name": "_option",
         "type": "uint256",
         "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "categoryToMarkets",
-    "inputs": [
-      {
-        "name": "",
-        "type": "string",
-        "internalType": "string"
       },
       {
-        "name": "",
+        "name": "_votes",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -217,61 +156,23 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "createDispute",
+    "name": "cancelPrediction",
     "inputs": [
       {
-        "name": "marketId",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "reason",
-        "type": "string",
-        "internalType": "string"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "payable"
-  },
-  {
-    "type": "function",
-    "name": "createLimitOrder",
-    "inputs": [
-      {
-        "name": "marketId",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "isYes",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "targetPrice",
+        "name": "_predictionId",
         "type": "uint256",
         "internalType": "uint256"
       }
     ],
     "outputs": [],
-    "stateMutability": "payable"
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
-    "name": "createMarket",
+    "name": "createPrediction",
     "inputs": [
       {
         "name": "_description",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "_category",
         "type": "string",
         "internalType": "string"
       },
@@ -281,9 +182,24 @@ export const abi = [
         "internalType": "uint256"
       },
       {
-        "name": "_imageIpfsHash",
-        "type": "string",
-        "internalType": "string"
+        "name": "_minVotes",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_maxVotes",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_type",
+        "type": "uint8",
+        "internalType": "enum PredictionMarketplace.PredictionType"
+      },
+      {
+        "name": "_optionsCount",
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
         "name": "_tags",
@@ -292,26 +208,16 @@ export const abi = [
       }
     ],
     "outputs": [],
-    "stateMutability": "payable"
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
-    "name": "createProfile",
+    "name": "distributeRewards",
     "inputs": [
       {
-        "name": "_username",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "_avatarIpfsHash",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "_bio",
-        "type": "string",
-        "internalType": "string"
+        "name": "_predictionId",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -319,74 +225,17 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "disputeResolutionThreshold",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "disputes",
+    "name": "finalizePrediction",
     "inputs": [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "disputer",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "reason",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "stake",
+        "name": "_predictionId",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "timestamp",
+        "name": "_outcome",
         "type": "uint256",
         "internalType": "uint256"
-      },
-      {
-        "name": "yesVotes",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "noVotes",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "resolved",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "followUser",
-    "inputs": [
-      {
-        "name": "userToFollow",
-        "type": "address",
-        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -394,34 +243,34 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "getCurrentPrice",
+    "name": "getLuckiestUsers",
     "inputs": [
       {
-        "name": "marketId",
+        "name": "_limit",
         "type": "uint256",
         "internalType": "uint256"
-      },
-      {
-        "name": "isYes",
-        "type": "bool",
-        "internalType": "bool"
       }
     ],
     "outputs": [
       {
         "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
+        "type": "address[]",
+        "internalType": "address[]"
+      },
+      {
+        "name": "",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "getMarketDetails",
+    "name": "getPredictionDetails",
     "inputs": [
       {
-        "name": "marketId",
+        "name": "_predictionId",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -433,11 +282,6 @@ export const abi = [
         "internalType": "string"
       },
       {
-        "name": "category",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
         "name": "endTime",
         "type": "uint256",
         "internalType": "uint256"
@@ -445,22 +289,32 @@ export const abi = [
       {
         "name": "status",
         "type": "uint8",
-        "internalType": "enum AdvancedPredictionMarket.MarketStatus"
+        "internalType": "enum PredictionMarketplace.PredictionStatus"
       },
       {
-        "name": "totalLiquidity",
+        "name": "totalVotes",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "outcome",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "totalVolume",
+        "name": "minVotes",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "totalParticipants",
+        "name": "maxVotes",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "predictionType",
+        "type": "uint8",
+        "internalType": "enum PredictionMarketplace.PredictionType"
       },
       {
         "name": "creator",
@@ -468,25 +322,22 @@ export const abi = [
         "internalType": "address"
       },
       {
+        "name": "creationTime",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
         "name": "tags",
         "type": "string[]",
         "internalType": "string[]"
       },
       {
-        "name": "disputeStatus",
-        "type": "uint8",
-        "internalType": "enum AdvancedPredictionMarket.DisputeStatus"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getMarketIds",
-    "inputs": [],
-    "outputs": [
+        "name": "optionsCount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
       {
-        "name": "",
+        "name": "totalBetAmount",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -514,42 +365,112 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "getUserPositions",
+    "name": "getUserStats",
     "inputs": [
       {
-        "name": "user",
+        "name": "_user",
         "type": "address",
         "internalType": "address"
-      },
-      {
-        "name": "marketId",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "outputs": [
       {
-        "name": "yesTokens",
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct PredictionMarketplace.UserStats",
+        "components": [
+          {
+            "name": "totalVotes",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "wonVotes",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "totalAmountBet",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "totalAmountWon",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "luck",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getUserVotes",
+    "inputs": [
+      {
+        "name": "_predictionId",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "noTokens",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
+        "name": "_user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
       {
-        "name": "totalInvested",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "limitOrderIds",
+        "name": "",
         "type": "uint256[]",
         "internalType": "uint256[]"
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "grantModRole",
+    "inputs": [
+      {
+        "name": "_account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "grantOracleRole",
+    "inputs": [
+      {
+        "name": "_account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "grantPredictorRole",
+    "inputs": [
+      {
+        "name": "_account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -595,15 +516,58 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "likeComment",
+    "name": "hasUserParticipated",
     "inputs": [
       {
-        "name": "marketId",
+        "name": "_predictionId",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "commentId",
+        "name": "_user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "luckiestUsers",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "partialWithdraw",
+    "inputs": [
+      {
+        "name": "_predictionId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_votes",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -613,7 +577,43 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "markets",
+    "name": "placeVotes",
+    "inputs": [
+      {
+        "name": "_predictionId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_option",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_votes",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "predictionCounter",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "predictions",
     "inputs": [
       {
         "name": "",
@@ -628,24 +628,34 @@ export const abi = [
         "internalType": "string"
       },
       {
-        "name": "category",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
         "name": "endTime",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "resolutionTime",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
         "name": "status",
         "type": "uint8",
-        "internalType": "enum AdvancedPredictionMarket.MarketStatus"
+        "internalType": "enum PredictionMarketplace.PredictionStatus"
+      },
+      {
+        "name": "outcome",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "minVotes",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxVotes",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "predictionType",
+        "type": "uint8",
+        "internalType": "enum PredictionMarketplace.PredictionType"
       },
       {
         "name": "creator",
@@ -653,72 +663,17 @@ export const abi = [
         "internalType": "address"
       },
       {
-        "name": "yesToken",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "noToken",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "yesPrice",
+        "name": "creationTime",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "noPrice",
+        "name": "optionsCount",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "outcome",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "totalLiquidity",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "totalVolume",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "totalParticipants",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "creatorFees",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "platformFees",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "disputeStatus",
-        "type": "uint8",
-        "internalType": "enum AdvancedPredictionMarket.DisputeStatus"
-      },
-      {
-        "name": "imageIpfsHash",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "commentCount",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "limitOrderCount",
+        "name": "totalBetAmount",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -727,83 +682,16 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "maxMarketDuration",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "minMarketDuration",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "profiles",
+    "name": "removeValidTag",
     "inputs": [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
+        "name": "_tag",
+        "type": "string",
+        "internalType": "string"
       }
     ],
-    "outputs": [
-      {
-        "name": "username",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "avatarIpfsHash",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "bio",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "reputation",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "totalProfits",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "creatorEarnings",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "isActive",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "isCreator",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -825,17 +713,38 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "resolveMarket",
+    "name": "revokeModRole",
     "inputs": [
       {
-        "name": "marketId",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
+        "name": "_account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "revokeOracleRole",
+    "inputs": [
       {
-        "name": "outcome",
-        "type": "bool",
-        "internalType": "bool"
+        "name": "_account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "revokePredictorRole",
+    "inputs": [
+      {
+        "name": "_account",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -854,37 +763,6 @@ export const abi = [
         "name": "account",
         "type": "address",
         "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setDisputeThreshold",
-    "inputs": [
-      {
-        "name": "threshold",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setMarketDurationLimits",
-    "inputs": [
-      {
-        "name": "_minDuration",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_maxDuration",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -911,30 +789,7 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "takePosition",
-    "inputs": [
-      {
-        "name": "marketId",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "isYes",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "targetPrice",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "payable"
-  },
-  {
-    "type": "function",
-    "name": "totalPlatformFees",
+    "name": "totalFees",
     "inputs": [],
     "outputs": [
       {
@@ -947,7 +802,70 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "verifiedCategories",
+    "name": "userParticipation",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "userStats",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "totalVotes",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "wonVotes",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "totalAmountBet",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "totalAmountWon",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "luck",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "validTags",
     "inputs": [
       {
         "name": "",
@@ -966,49 +884,17 @@ export const abi = [
   },
   {
     "type": "function",
-    "name": "verifiedCreators",
+    "name": "withdrawFees",
     "inputs": [
       {
-        "name": "",
+        "name": "_to",
         "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "verifyCreator",
-    "inputs": [
-      {
-        "name": "creator",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "voteOnDispute",
-    "inputs": [
-      {
-        "name": "marketId",
-        "type": "uint256",
-        "internalType": "uint256"
+        "internalType": "address payable"
       },
       {
-        "name": "supportDispute",
-        "type": "bool",
-        "internalType": "bool"
+        "name": "_amount",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -1016,109 +902,35 @@ export const abi = [
   },
   {
     "type": "event",
-    "name": "CommentAdded",
+    "name": "FeeWithdrawn",
     "inputs": [
       {
-        "name": "marketId",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "commentId",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "author",
+        "name": "to",
         "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "DisputeCreated",
-    "inputs": [
-      {
-        "name": "marketId",
-        "type": "uint256",
         "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "disputer",
-        "type": "address",
-        "indexed": false,
         "internalType": "address"
-      },
-      {
-        "name": "reason",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "DisputeResolved",
-    "inputs": [
-      {
-        "name": "marketId",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "originalOutcomeStood",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "LimitOrderCreated",
-    "inputs": [
-      {
-        "name": "marketId",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "orderId",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "creator",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      },
-      {
-        "name": "isYes",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
       },
       {
         "name": "amount",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LuckUpdated",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       },
       {
-        "name": "targetPrice",
+        "name": "newLuck",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -1128,16 +940,22 @@ export const abi = [
   },
   {
     "type": "event",
-    "name": "LimitOrderFilled",
+    "name": "PartialWithdrawal",
     "inputs": [
       {
-        "name": "marketId",
+        "name": "predictionId",
         "type": "uint256",
         "indexed": true,
         "internalType": "uint256"
       },
       {
-        "name": "orderId",
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "votes",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -1147,32 +965,32 @@ export const abi = [
   },
   {
     "type": "event",
-    "name": "MarketCategorized",
+    "name": "PredictionCancelled",
     "inputs": [
       {
-        "name": "marketId",
+        "name": "predictionId",
         "type": "uint256",
         "indexed": true,
         "internalType": "uint256"
-      },
-      {
-        "name": "category",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
       }
     ],
     "anonymous": false
   },
   {
     "type": "event",
-    "name": "MarketCreated",
+    "name": "PredictionCreated",
     "inputs": [
       {
-        "name": "marketId",
+        "name": "predictionId",
         "type": "uint256",
         "indexed": true,
         "internalType": "uint256"
+      },
+      {
+        "name": "creator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       },
       {
         "name": "description",
@@ -1181,63 +999,32 @@ export const abi = [
         "internalType": "string"
       },
       {
-        "name": "creator",
-        "type": "address",
+        "name": "endTime",
+        "type": "uint256",
         "indexed": false,
-        "internalType": "address"
+        "internalType": "uint256"
+      },
+      {
+        "name": "predictionType",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "enum PredictionMarketplace.PredictionType"
       }
     ],
     "anonymous": false
   },
   {
     "type": "event",
-    "name": "MarketResolved",
+    "name": "PredictionFinalized",
     "inputs": [
       {
-        "name": "marketId",
+        "name": "predictionId",
         "type": "uint256",
         "indexed": true,
         "internalType": "uint256"
       },
       {
         "name": "outcome",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "PositionExited",
-    "inputs": [
-      {
-        "name": "marketId",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "user",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      },
-      {
-        "name": "isYes",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "reward",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -1247,50 +1034,25 @@ export const abi = [
   },
   {
     "type": "event",
-    "name": "PositionTaken",
+    "name": "RewardsDistributed",
     "inputs": [
       {
-        "name": "marketId",
+        "name": "predictionId",
         "type": "uint256",
         "indexed": true,
         "internalType": "uint256"
       },
       {
-        "name": "user",
-        "type": "address",
+        "name": "winners",
+        "type": "address[]",
         "indexed": false,
-        "internalType": "address"
+        "internalType": "address[]"
       },
       {
-        "name": "isYes",
-        "type": "bool",
+        "name": "amounts",
+        "type": "uint256[]",
         "indexed": false,
-        "internalType": "bool"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "ProfileCreated",
-    "inputs": [
-      {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "username",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
+        "internalType": "uint256[]"
       }
     ],
     "anonymous": false
@@ -1366,6 +1128,63 @@ export const abi = [
         "type": "address",
         "indexed": true,
         "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TagAdded",
+    "inputs": [
+      {
+        "name": "tag",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TagRemoved",
+    "inputs": [
+      {
+        "name": "tag",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "VotesPlaced",
+    "inputs": [
+      {
+        "name": "predictionId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "option",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "votes",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false

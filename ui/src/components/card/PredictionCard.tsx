@@ -1,595 +1,509 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { parseEther, formatEther } from 'viem';
-import { IoWalletOutline, IoSwapHorizontal, IoTrashOutline, IoInformationCircle, IoAdd, IoRemove } from 'react-icons/io5';
-import toast from 'react-hot-toast';
-import { usePredictionMarket, useMarketPosition } from '../../hooks/usePredictionHooks';
-import dynamic from 'next/dynamic';
-import {useAccount} from 'wagmi'
-const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
+import { motion } from 'framer-motion';
+import { IoAdd, IoRemove, IoTimeOutline, IoWalletOutline, IoTrailSign, IoCheckmark, IoClose, IoCash, IoBulb } from 'react-icons/io5';
+import { useReadContract, useWriteContract, useAccount } from 'wagmi';
+import { parseEther } from 'viem';
+import { baseSepolia } from 'viem/chains';
+import axios from 'axios';
 
-// Constants
-const MIN_BET = 0.001;
-const STEP_AMOUNT = 0.001;
+interface PredictionCardProps {
+  predictionId: bigint;
+  usePredictionDetails: (id: bigint) => any;
+  onPredict: (id: number, isYes: boolean, amount: number) => void;
+  contractAddress: `0x${string}`;
+  abi: any;
+}
 
-export const PositionManagement = ({ 
-  marketId, 
-  position,
-  currentPrices,
-  contractAddress,
-  abi,
-  onUpdatePosition 
-}) => {
-  const [exitAmount, setExitAmount] = useState(MIN_BET);
-  const [selectedPosition, setSelectedPosition] = useState('yes');
-  const [showLimitOrders, setShowLimitOrders] = useState(false);
-  const [limitOrderPrice, setLimitOrderPrice] = useState(50);
-  const [limitOrderAmount, setLimitOrderAmount] = useState(MIN_BET);
+const ADMIN_ROLE = '0xa49807205ce4d355092ef5a8a18f56e8913cf4a201fbe287825b095693c21775';
+const ORACLE_ROLE = '0x68e79a7bf1e0bc45d0a330c573bc37be4d8f69e2c52ed8096fdddca5aaefaa0c';
 
-  const { exitPosition, createLimitOrder, cancelLimitOrder, isProcessing } = usePredictionMarket(contractAddress, abi);
-
-  // Format position values
-  const yesTokens = position?.yesTokens ? Number(formatEther(position.yesTokens)) : 0;
-  const noTokens = position?.noTokens ? Number(formatEther(position.noTokens)) : 0;
-  const totalInvested = position?.totalInvested ? Number(formatEther(position.totalInvested)) : 0;
-
-  // Calculate vote percentages
-  const totalVotes = yesTokens + noTokens;
-  const yesPercentage = totalVotes > 0 ? (yesTokens / totalVotes) * 100 : 50;
-  const noPercentage = 100 - yesPercentage;
-
-  const handleExitPosition = async () => {
-    if (!exitAmount || exitAmount < MIN_BET) {
-      toast.error(`Minimum exit amount is ${MIN_BET} ETH`);
-      return;
-    }
-
-    const maxExitAmount = selectedPosition === 'yes' ? yesTokens : noTokens;
-    if (exitAmount > maxExitAmount) {
-      toast.error(`Maximum exit amount is ${maxExitAmount.toFixed(3)} ETH`);
-      return;
-    }
-
-    try {
-      const success = await exitPosition(Number(marketId), selectedPosition === 'yes', exitAmount);
-      if (success) {
-        toast.success('Position exited successfully');
-        onUpdatePosition?.();
-        setExitAmount(MIN_BET);
-      }
-    } catch (error) {
-      console.error('Exit position error:', error);
-      toast.error('Failed to exit position');
-    }
-  };
-
-  const handleCreateLimitOrder = async () => {
-    if (!limitOrderAmount || limitOrderAmount < MIN_BET) {
-      toast.error(`Minimum order amount is ${MIN_BET} ETH`);
-      return;
-    }
-
-    if (limitOrderPrice <= 0 || limitOrderPrice >= 100) {
-      toast.error('Price must be between 0 and 100');
-      return;
-    }
-
-    try {
-      const success = await createLimitOrder(
-        Number(marketId), 
-        selectedPosition === 'yes',
-        limitOrderAmount,
-        Math.floor(limitOrderPrice * 10)
-      );
-
-      if (success) {
-        toast.success('Limit order created successfully');
-        onUpdatePosition?.();
-        setLimitOrderAmount(MIN_BET);
-        setLimitOrderPrice(50);
-      }
-    } catch (error) {
-      console.error('Create limit order error:', error);
-      toast.error('Failed to create limit order');
-    }
-  };
-
-  const handleCancelLimitOrder = async (orderId) => {
-    try {
-      const success = await cancelLimitOrder(Number(marketId), Number(orderId));
-      if (success) {
-        toast.success('Order cancelled successfully');
-        onUpdatePosition?.();
-      }
-    } catch (error) {
-      console.error('Cancel order error:', error);
-      toast.error('Failed to cancel order');
-    }
-  };
-
-  return (
-    <div className="bg-white dark:bg-navy-800 rounded-xl shadow-lg p-6 space-y-6">
-      {/* Position Summary */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Your Position
-          </h2>
-          <div className="text-sm font-medium text-gray-600 dark:text-gray-300">
-            Total Invested: {totalInvested.toFixed(3)} ETH
-          </div>
-        </div>
-
-        {/* Vote Distribution Bar */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm font-medium">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-green-500" />
-              <span className="text-gray-900 dark:text-white">
-                Yes: {yesTokens.toFixed(3)} ({yesPercentage.toFixed(1)}%)
-              </span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-red-500" />
-              <span className="text-gray-900 dark:text-white">
-                No: {noTokens.toFixed(3)} ({noPercentage.toFixed(1)}%)
-              </span>
-            </div>
-          </div>
-          <div className="h-4 bg-gray-200 dark:bg-navy-900 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-green-500 to-green-600"
-              style={{ width: `${yesPercentage}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Position Controls */}
-      <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-4 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Exit Amount (ETH)
-            </label>
-            <div className="flex space-x-2">
-              <input
-                type="number"
-                value={exitAmount}
-                onChange={(e) => setExitAmount(Math.max(MIN_BET, parseFloat(e.target.value) || MIN_BET))}
-                disabled={isProcessing}
-                className="w-full px-3 py-2 bg-white dark:bg-navy-800 border border-gray-300 dark:border-navy-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600"
-                step={STEP_AMOUNT}
-                min={MIN_BET}
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Position Type
-            </label>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setSelectedPosition('yes')}
-                disabled={isProcessing}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  selectedPosition === 'yes'
-                    ? 'bg-green-500 dark:bg-green-600 text-white'
-                    : 'bg-gray-200 dark:bg-navy-700 text-gray-700 dark:text-gray-300'
-                }`}
-              >
-                Yes
-              </button>
-              <button
-                onClick={() => setSelectedPosition('no')}
-                disabled={isProcessing}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  selectedPosition === 'no'
-                    ? 'bg-red-500 dark:bg-red-600 text-white'
-                    : 'bg-gray-200 dark:bg-navy-700 text-gray-700 dark:text-gray-300'
-                }`}
-              >
-                No
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex space-x-3">
-          <button
-            onClick={handleExitPosition}
-            disabled={isProcessing}
-            className="flex-1 px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-          >
-            {isProcessing ? 'Processing...' : 'Exit Position'}
-          </button>
-          <button
-            onClick={() => setShowLimitOrders(!showLimitOrders)}
-            disabled={isProcessing}
-            className="px-4 py-2 bg-gray-200 dark:bg-navy-700 hover:bg-gray-300 dark:hover:bg-navy-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-          >
-            {showLimitOrders ? 'Hide Orders' : 'Limit Orders'}
-          </button>
-        </div>
-      </div>
-
-      {/* Limit Orders Panel */}
-      <AnimatePresence>
-        {showLimitOrders && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="space-y-4 overflow-hidden"
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Order Amount (ETH)
-                </label>
-                <input
-                  type="number"
-                  value={limitOrderAmount}
-                  onChange={(e) => setLimitOrderAmount(Math.max(MIN_BET, parseFloat(e.target.value) || MIN_BET))}
-                  disabled={isProcessing}
-                  className="w-full px-3 py-2 bg-white dark:bg-navy-800 border border-gray-300 dark:border-navy-600 rounded-lg text-gray-900 dark:text-white text-sm"
-                  step={STEP_AMOUNT}
-                  min={MIN_BET}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Target Price (%)
-                </label>
-                <input
-                  type="number"
-                  value={limitOrderPrice}
-                  onChange={(e) => setLimitOrderPrice(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
-                  disabled={isProcessing}
-                  className="w-full px-3 py-2 bg-white dark:bg-navy-800 border border-gray-300 dark:border-navy-600 rounded-lg text-gray-900 dark:text-white text-sm"
-                  min="0"
-                  max="100"
-                />
-              </div>
-            </div>
-
-            <button
-              onClick={handleCreateLimitOrder}
-              disabled={isProcessing}
-              className="w-full px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-            >
-              {isProcessing ? 'Creating...' : 'Create Limit Order'}
-            </button>
-
-            {/* Active Orders */}
-            {position?.limitOrders?.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                  Active Orders
-                </h3>
-                <div className="space-y-2">
-                  {position.limitOrders.map((orderId) => (
-                    <div
-                      key={orderId.toString()}
-                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-navy-900 rounded-lg"
-                    >
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        Order #{orderId.toString()}
-                      </span>
-                      <button
-                        onClick={() => handleCancelLimitOrder(orderId)}
-                        disabled={isProcessing}
-                        className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-full transition-colors disabled:opacity-50"
-                      >
-                        <IoTrashOutline />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-export const PredictionControl = ({
-  marketId,
-  shareAmount,
-  setShareAmount,
-  onPrediction,
-  isProcessing
-}) => {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between px-4">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Prediction Amount:
-        </span>
-        <div className="flex items-center space-x-3">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setShareAmount(prev => Math.max(MIN_BET, prev - STEP_AMOUNT))}
-            disabled={isProcessing}
-            className="w-8 h-8 flex items-center justify-center bg-gray-200 dark:bg-navy-700 text-gray-700 dark:text-gray-300 rounded-full disabled:opacity-50"
-          >
-            <IoRemove size={16} />
-          </motion.button>
-          
-          <input
-            type="number"
-            value={shareAmount}
-            onChange={(e) => setShareAmount(Math.max(MIN_BET, parseFloat(e.target.value) || MIN_BET))}
-            disabled={isProcessing}
-            className="w-24 text-center border border-gray-300 dark:border-navy-600 rounded-lg py-2 bg-white dark:bg-navy-900 text-gray-900 dark:text-white"
-            step={STEP_AMOUNT}
-            min={MIN_BET}
-          />
-          
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setShareAmount(prev => prev + STEP_AMOUNT)}
-            disabled={isProcessing}
-            className="w-8 h-8 flex items-center justify-center bg-gray-200 dark:bg-navy-700 text-gray-700 dark:text-gray-300 rounded-full disabled:opacity-50"
-          >
-            <IoAdd size={16} />
-          </motion.button>
-        </div>
-      </div>
-
-      {/* Prediction Buttons */}
-      <div className="flex space-x-4">
-        <button
-          onClick={() => onPrediction(true)}
-          disabled={isProcessing}
-          className="flex-1 py-3 bg-green-500 dark:bg-green-600 hover:bg-green-600 dark:hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-        >
-          Yes {shareAmount} ETH
-        </button>
-        <button
-          onClick={() => onPrediction(false)}
-          disabled={isProcessing}
-          className="flex-1 py-3 bg-red-500 dark:bg-red-600 hover:bg-red-600 dark:hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-        >
-          No {shareAmount} ETH
-        </button>
-      </div>
-    </div>
-  );
-};
-
-
-// Constants
-
-export const PredictionCard = ({
-  predictionId,
-  usePredictionDetails,
+const PredictionCard: React.FC<PredictionCardProps> = ({ 
+  predictionId, 
+  usePredictionDetails, 
+  onPredict,
   contractAddress,
   abi
 }) => {
-  const [shareAmount, setShareAmount] = useState(MIN_BET);
-  const [showPositionManagement, setShowPositionManagement] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
-
+  const [shareAmount, setShareAmount] = useState(1);
+  const [isYesSelected, setIsYesSelected] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isOracle, setIsOracle] = useState(false);
+  const [outcome, setOutcome] = useState<number>(0);
+  const [isAIFinalizing, setIsAIFinalizing] = useState(false);
+  const { data: prediction, isLoading } = usePredictionDetails(predictionId);
   const { address } = useAccount();
-  const { takePosition, isProcessing } = usePredictionMarket(contractAddress, abi);
-  
-  // Get prediction details
-  const { data: predictionDetails, isLoading: isLoadingDetails } = usePredictionDetails(predictionId);
-  
-  const {
-    position,
-    prices,
-    refetchPosition
-  } = useMarketPosition(contractAddress, abi, predictionId, address);
+  const { writeContract } = useWriteContract();
 
-  // Extract prediction details with proper null checks
-  const description = predictionDetails?.[0] || 'Loading...';
-  const category = predictionDetails?.[1] || '';
-  const endTime = predictionDetails?.[2] || BigInt(0);
-  const status = predictionDetails?.[3] || 0;
-  const totalLiquidity = predictionDetails?.[4] || BigInt(0);
-  const totalVolume = predictionDetails?.[5] || BigInt(0);
-  const totalParticipants = predictionDetails?.[6] || BigInt(0);
-  const tags = predictionDetails?.[8] || [];
+  const [testFinalizeData, setTestFinalizeData] = useState<any>(null);
+  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
 
-  const isActive = status === 0;
-  const endTimeDate = new Date(Number(endTime) * 1000);
-  const hasEnded = Date.now() > Number(endTime) * 1000;
 
-  // Calculate vote percentages
-  const yesVotes = Number(prices?.yes || 500n) / 10;
-  const noVotes = Number(prices?.no || 500n) / 10;
+  const { data: hasAdminRole } = useReadContract({
+    address: contractAddress,
+    abi: abi,
+    functionName: 'hasRole',
+    args: [ADMIN_ROLE, address as `0x${string}`],
+  });
 
-  const handlePrediction = async (isYes) => {
-    if (!address) {
-      toast.error('Please connect your wallet first');
-      return;
+  const { data: hasOracleRole } = useReadContract({
+    address: contractAddress,
+    abi: abi,
+    functionName: 'hasRole',
+    args: [ORACLE_ROLE, address as `0x${string}`],
+  });
+
+  const [isPredictionEnded, setIsPredictionEnded] = useState(false);
+
+  useEffect(() => {
+    if (prediction) {
+      const [, endTime] = prediction;
+      setIsPredictionEnded(Date.now() / 1000 > Number(endTime));
     }
+  }, [prediction]);
 
+  const handleFinalize = async (useAI = false) => {
+    if (!address) return;
     try {
-      const success = await takePosition(predictionId, isYes, shareAmount);
-      if (success) {
-        toast.success(`Successfully predicted ${isYes ? 'Yes' : 'No'}`);
-        refetchPosition();
+      let finalOutcome;
+      if (useAI) {
+        setIsAIFinalizing(true);
+        try {
+          const response = await axios.post(`https://ai-predict-fcdw.onrender.com/finalize-prediction/${predictionId}`);
+          finalOutcome = response.data.outcome;
+        } catch (error) {
+          console.error('Error finalizing with AI:', error);
+          setIsAIFinalizing(false);
+          return;
+        }
+      } else {
+        finalOutcome = outcome;
       }
+
+      await writeContract({
+        address: contractAddress,
+        abi: abi,
+        functionName: 'finalizePrediction',
+        args: [predictionId, BigInt(finalOutcome)],
+        chain: baseSepolia,
+        account: address
+      });
+      
+      console.log(`Prediction finalized ${useAI ? 'with AI' : 'by admin'}`);
     } catch (error) {
-      console.error('Prediction error:', error);
-      toast.error('Failed to make prediction');
+      console.error('Error finalizing prediction:', error);
+    } finally {
+      setIsAIFinalizing(false);
     }
   };
 
-  if (isLoadingDetails) {
+  useEffect(() => {
+    setIsAdmin(!!hasAdminRole);
+    setIsOracle(!!hasOracleRole);
+  }, [hasAdminRole, hasOracleRole]);
+
+  const handleIncrement = () => setShareAmount(prev => prev + 1);
+  const handleDecrement = () => setShareAmount(prev => Math.max(1, prev - 1));
+
+  const handlePredict = () => {
+    onPredict(Number(predictionId), isYesSelected, shareAmount);
+  };
+
+
+  const handleTestFinalize = async () => {
+    try {
+      setIsAIFinalizing(true);
+      const response = await axios.post('https://ai-predict-fcdw.onrender.com/test/finalize-prediction', {
+        description: description
+      });
+      setTestFinalizeData(response.data);
+      setIsTestModalOpen(true);
+    } catch (error) {
+      console.error('Error testing finalization:', error);
+    } finally {
+      setIsAIFinalizing(false);
+    }
+  };
+
+  const handleConfirmFinalize = async () => {
+    if (!testFinalizeData || !address) return;
+    try {
+      await writeContract({
+        address: contractAddress,
+        abi: abi,
+        functionName: 'finalizePrediction',
+        args: [predictionId, BigInt(testFinalizeData.outcome)],
+        chain: baseSepolia,
+        account: address
+      });
+      console.log('Prediction finalized based on test data');
+      setIsTestModalOpen(false);
+    } catch (error) {
+      console.error('Error finalizing prediction:', error);
+    }
+  };
+
+
+  const handleCancel = async () => {
+    if (!address) return;
+    try {
+      await writeContract({
+        address: contractAddress,
+        abi: abi,
+        functionName: 'cancelPrediction',
+        args: [predictionId],
+        chain: baseSepolia,
+        account: address
+      });
+    } catch (error) {
+      console.error('Error cancelling prediction:', error);
+    }
+  };
+
+  const handleDistributeRewards = async () => {
+    if (!address) return;
+    try {
+      await writeContract({
+        address: contractAddress,
+        abi: abi,
+        functionName: 'distributeRewards',
+        args: [predictionId],
+        chain: baseSepolia,
+        account: address
+      });
+    } catch (error) {
+      console.error('Error distributing rewards:', error);
+    }
+  };
+
+  const formatTime = (timestamp: bigint) => {
+    const date = new Date(Number(timestamp) * 1000);
+    return date.toLocaleString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit'
+    });
+  };
+
+  const calculatePercentage = (votes: bigint, total: bigint) => {
+    const votesNum = Number(votes) || 0;
+    const totalNum = Number(total) || 0;
+    return totalNum > 0 ? (votesNum / totalNum) * 100 : 50;
+  };
+
+  if (isLoading) {
     return (
-      <div className="bg-white dark:bg-navy-800 rounded-xl shadow-lg p-6 space-y-4 animate-pulse">
-        <div className="h-6 bg-gray-200 dark:bg-navy-700 rounded w-3/4" />
-        <div className="grid grid-cols-3 gap-4">
-          <div className="h-20 bg-gray-200 dark:bg-navy-700 rounded" />
-          <div className="h-20 bg-gray-200 dark:bg-navy-700 rounded" />
-          <div className="h-20 bg-gray-200 dark:bg-navy-700 rounded" />
+      <div className="w-full h-64 p-4 flex items-center justify-center bg-white dark:bg-navy-800 rounded-xl shadow-lg overflow-hidden">
+        <div className="animate-pulse flex flex-col items-center space-y-4 w-full">
+          <div className="h-6 bg-gray-300 dark:bg-navy-600 rounded w-3/4"></div>
+          <div className="h-4 bg-gray-300 dark:bg-navy-600 rounded w-1/2"></div>
+          <div className="h-2 bg-gray-300 dark:bg-navy-600 rounded w-full"></div>
+          <div className="flex space-x-4 w-full">
+            <div className="h-8 bg-gray-300 dark:bg-navy-600 rounded w-1/2"></div>
+            <div className="h-8 bg-gray-300 dark:bg-navy-600 rounded w-1/2"></div>
+          </div>
         </div>
       </div>
     );
   }
 
+  if (!prediction) {
+    return null;
+  }
+
+  const [description, endTime, status, totalVotes, predictionOutcome, minVotes, maxVotes, predictionType, creator, creationTime, tags, optionsCount, totalBetAmount] = prediction;
+
+  const yesVotes = totalVotes[0] ? Number(totalVotes[0]) : 0;
+  const noVotes = totalVotes[1] ? Number(totalVotes[1]) : 0;
+  const totalVotesCount = yesVotes + noVotes;
+
+  const yesPercentage = calculatePercentage(BigInt(yesVotes), BigInt(totalVotesCount));
+  const noPercentage = calculatePercentage(BigInt(noVotes), BigInt(totalVotesCount));
+
+  const isActive = status === 0;
+  const isFinalized = status === 1;
+  const isCancelled = status === 2;
+  const totalEth = Number(totalBetAmount) / 1e18; // Convert from Wei to ETH
+
   return (
-    <motion.div
-      className="bg-white dark:bg-navy-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-navy-700"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      <div className="p-6 space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-start">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white line-clamp-2">
-            {description}
-          </h2>
-          <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-          >
-            <IoInformationCircle size={24} />
-          </button>
-        </div>
-
-        {/* Market Info */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <div className="bg-gray-50 dark:bg-navy-900 rounded-lg p-3">
-            <div className="text-sm text-gray-500 dark:text-gray-400">Ends</div>
-            <div className="text-gray-900 dark:text-white font-medium">
-              {endTimeDate.toLocaleDateString()} {endTimeDate.toLocaleTimeString()}
-            </div>
+    <div className="w-full h-full bg-white dark:bg-navy-800 rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl border border-gray-200 dark:border-navy-700 flex flex-col">
+      <div className="p-4 flex-grow">
+        <h2 className=" font-bold text-navy-700 dark:text-white mb-2 line-clamp-4">
+          {description}
+        </h2>
+        <div className="flex items-center justify-between mb-4 text-sm text-gray-600 dark:text-gray-400">
+          <div className="flex items-center">
+            <IoTimeOutline className="mr-1" />
+            <span>Ends: {formatTime(endTime)}</span>
           </div>
-          <div className="bg-gray-50 dark:bg-navy-900 rounded-lg p-3">
-            <div className="text-sm text-gray-500 dark:text-gray-400">Liquidity</div>
-            <div className="text-gray-900 dark:text-white font-medium">
-              {formatEther(totalLiquidity)} ETH
-            </div>
-          </div>
-          <div className="bg-gray-50 dark:bg-navy-900 rounded-lg p-3">
-            <div className="text-sm text-gray-500 dark:text-gray-400">Participants</div>
-            <div className="text-gray-900 dark:text-white font-medium">
-              {totalParticipants.toString()}
-            </div>
+          <div className="flex items-center">
+            <IoWalletOutline className="mr-1" />
+            <span>{totalEth.toFixed(4)} ETH</span>
           </div>
         </div>
-
-        {/* Vote Distribution */}
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-green-500" />
-              <span className="text-sm font-medium text-gray-900 dark:text-white">Yes {yesVotes}%</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium text-gray-900 dark:text-white">No {noVotes}%</span>
-              <div className="w-3 h-3 rounded-full bg-red-500" />
-            </div>
-          </div>
-          <div className="relative h-4 bg-gray-200 dark:bg-navy-900 rounded-full overflow-hidden">
-            <motion.div
-              className="absolute left-0 top-0 h-full bg-gradient-to-r from-green-500 to-green-600"
-              initial={{ width: 0 }}
-              animate={{ width: `${yesVotes}%` }}
-              transition={{ duration: 0.5 }}
-            />
-            <motion.div
-              className="absolute right-0 top-0 h-full bg-gradient-to-l from-red-500 to-red-600"
-              initial={{ width: 0 }}
-              animate={{ width: `${noVotes}%` }}
-              transition={{ duration: 0.5 }}
-            />
-          </div>
-        </div>
-
-        {/* Tags */}
-        {tags && tags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {tags.map((tag, index) => (
-              <span
-                key={index}
-                className="px-3 py-1 bg-gray-100 dark:bg-navy-900 text-gray-600 dark:text-gray-400 rounded-full text-sm"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Market Controls */}
-        {isActive && !hasEnded && (
-          <div className="space-y-6">
-            <PredictionControl
-              marketId={predictionId}
-              shareAmount={shareAmount}
-              setShareAmount={setShareAmount}
-              onPrediction={handlePrediction}
-              isProcessing={isProcessing}
-            />
-
-            {address && (
-              <button
-                onClick={() => setShowPositionManagement(!showPositionManagement)}
-                className="w-full py-3 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-              >
-                <IoWalletOutline className="inline-block mr-2" />
-                {showPositionManagement ? 'Hide' : 'Manage'} Position
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Position Management */}
-        <AnimatePresence>
-          {showPositionManagement && position && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <PositionManagement
-                marketId={predictionId}
-                position={position}
-                currentPrices={prices}
-                contractAddress={contractAddress}
-                abi={abi}
-                onUpdatePosition={refetchPosition}
+        
+        <div className="flex items-center space-x-2 mb-4">
+          <div className="flex-grow">
+            <div className="w-full bg-gray-200 dark:bg-navy-700 rounded-full h-2 overflow-hidden">
+              <motion.div 
+                className="h-full rounded-full bg-gradient-to-r from-green-400 to-brand-500 dark:from-green-500 dark:to-brand-400"
+                initial={{ width: 0 }}
+                animate={{ width: `${yesPercentage}%` }}
+                transition={{ duration: 0.5 }}
               />
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+          </div>
+          <span className="text-sm font-medium text-green-500 dark:text-green-400 w-12 text-right">{yesPercentage.toFixed(1)}%</span>
+          <span className="text-sm font-medium text-red-500 dark:text-red-400 w-12 text-right">{noPercentage.toFixed(1)}%</span>
+        </div>
 
-        {/* Market Details */}
-        <AnimatePresence>
-          {showDetails && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="space-y-4 overflow-hidden"
+        <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-2">
+          <IoTrailSign className="mr-1" />
+          {tags.map((tag, index) => (
+            <span key={index} className="mr-2 bg-gray-200 dark:bg-navy-700 px-2 py-1 rounded-full text-xs">
+              {tag}
+            </span>
+          ))}
+        </div>
+
+        <div className="text-xs text-gray-500 dark:text-gray-400">
+          <p>Min Votes: {Number(minVotes)}</p>
+          <p>Creator: {creator.slice(0, 6)}...{creator.slice(-4)}</p>
+          <p>Created: {formatTime(creationTime)}</p>
+          <p>Status: {isActive ? 'Active' : isFinalized ? 'Finalized' : 'Cancelled'}</p>
+          {isFinalized && <p>Outcome: {Number(predictionOutcome) === 0 ? 'Yes' : 'No'}</p>}
+        </div>
+      </div>
+
+      {isActive && (
+        <div className="p-4 bg-gray-50 dark:bg-navy-900">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2 flex-grow">
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsYesSelected(true)}
+                className={`py-2 px-4 rounded-lg transition-colors duration-200 text-sm font-medium flex-1 ${
+                  isYesSelected 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-gray-200 dark:bg-navy-700 text-gray-700 dark:text-gray-300'
+                }`}
+              >
+                Yes
+              </motion.button>
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsYesSelected(false)}
+                className={`py-2 px-4 rounded-lg transition-colors duration-200 text-sm font-medium flex-1 ${
+                  !isYesSelected 
+                    ? 'bg-red-500 text-white' 
+                    : 'bg-gray-200 dark:bg-navy-700 text-gray-700 dark:text-gray-300'
+                }`}
+              >
+                No
+              </motion.button>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2 mb-3">
+            <motion.button 
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={handleDecrement}
+              className="bg-gray-200 dark:bg-navy-700 text-gray-700 dark:text-gray-300 rounded-full p-1"
             >
-              <div className="bg-gray-50 dark:bg-navy-900 rounded-lg p-4">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                  Market Details
-                </h3>
-                <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                  <p>Category: {category}</p>
-                  <p>Status: {status === 0 ? 'Active' : 'Closed'}</p>
-                  <p>Total Participants: {totalParticipants.toString()}</p>
-                  <p>Total Volume: {formatEther(totalVolume)} ETH</p>
-                </div>
+              <IoRemove size={14} />
+            </motion.button>
+            <input 
+              type="number" 
+              value={shareAmount}
+              onChange={(e) => setShareAmount(Math.max(1, parseInt(e.target.value) || 1))}
+              className="w-16 text-center border dark:border-navy-600 rounded-lg py-1 bg-white dark:bg-navy-900 text-gray-700 dark:text-gray-300 text-sm"
+            />
+            <motion.button 
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={handleIncrement}
+              className="bg-gray-200 dark:bg-navy-700 text-gray-700 dark:text-gray-300 rounded-full p-1"
+            >
+              <IoAdd size={14} />
+            </motion.button>
+          </div>
+          <motion.button 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handlePredict}
+            className="w-full bg-gradient-to-r from-brand-400 to-brand-500 dark:from-brand-500 dark:to-brand-400 text-white rounded-lg py-2 px-4 transition-all duration-200 text-sm font-medium"
+          >
+            Predict
+          </motion.button>
+        </div>
+      )}
+      {isActive && isPredictionEnded && (
+                <div className="p-4 bg-gray-50 dark:bg-navy-900 border-t border-gray-200 dark:border-navy-700">
+          <div className="flex flex-col space-y-2"></div>
+            <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => handleTestFinalize()}
+            disabled={isAIFinalizing}
+            className="w-full bg-purple-500 text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center justify-center"
+          >
+           {isAIFinalizing ? (
+             <>
+               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+               Testing AI Finalization...
+             </>
+           ) : (
+             <>
+               <IoBulb className="mr-1" /> Test AI Finalization
+             </>
+           )}
+         </motion.button>
+         </div>
+      )}
+        {isTestModalOpen && testFinalizeData && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-navy-800 p-6 rounded-lg max-w-md w-full shadow-xl"
+            >
+              <h3 className="text-lg font-bold mb-4 text-navy-700 dark:text-white">Test Finalization Result</h3>
+              <p className="text-gray-700 dark:text-gray-300"><strong>Outcome:</strong> {testFinalizeData.outcome === 1 ? 'Yes' : 'No'}</p>
+              <p className="text-gray-700 dark:text-gray-300"><strong>Confidence:</strong> {(testFinalizeData.confidence * 100).toFixed(2)}%</p>
+              <p className="text-gray-700 dark:text-gray-300"><strong>Explanation:</strong> {testFinalizeData.explanation}</p>
+              <div className="mt-4 flex justify-end space-x-2">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setIsTestModalOpen(false)}
+                  className="px-4 py-2 bg-gray-300 dark:bg-navy-600 text-gray-800 dark:text-white rounded transition-colors duration-200"
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleConfirmFinalize}
+                  className="px-4 py-2 bg-blue-500 text-white rounded transition-colors duration-200"
+                >
+                  Confirm Finalization
+                </motion.button>
               </div>
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.div>
+          </motion.div>
+        )}
+
+
+
+      {isAdmin && isActive && isPredictionEnded && (
+        <div className="p-4 bg-gray-50 dark:bg-navy-900 border-t border-gray-200 dark:border-navy-700">
+          <div className="flex flex-col space-y-2">
+            <div className="flex items-center space-x-2 mb-2">
+              <select 
+                value={outcome}
+                onChange={(e) => setOutcome(parseInt(e.target.value))}
+                className="flex-grow p-2 border rounded dark:bg-navy-700 dark:border-navy-600"
+              >
+                <option value={0}>Yes</option>
+                <option value={1}>No</option>
+              </select>
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleFinalize(false)}
+                className="bg-blue-500 text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center"
+              >
+                <IoCheckmark className="mr-1" /> Admin Finalize
+              </motion.button>
+            </div>
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => handleFinalize(true)}
+              disabled={isAIFinalizing}
+              className="w-full bg-purple-500 text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center justify-center"
+            >
+              {isAIFinalizing ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Finalizing with AI...
+                </>
+              ) : (
+                <>
+                  <IoBulb className="mr-1" /> Finalize with AI
+                </>
+              )}
+            </motion.button>
+          </div>
+        </div>
+      )}
+
+      {(isAdmin || isOracle) && isActive && (
+        <div className="p-4 bg-gray-50 dark:bg-navy-900 border-t border-gray-200 dark:border-navy-700">
+          <div className="flex flex-col space-y-2">
+            {isOracle && (
+              <div className="flex items-center space-x-2 mb-2">
+                <select 
+                  value={outcome}
+                  onChange={(e) => setOutcome(parseInt(e.target.value))}
+                  className="flex-grow p-2 border rounded dark:bg-navy-700 dark:border-navy-600"
+                >
+                  <option value={0}>Yes</option>
+                  <option value={1}>No</option>
+                </select>
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleFinalize(false)}
+                  className="bg-blue-500 text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center"
+                >
+                  <IoCheckmark className="mr-1" /> Finalize
+                </motion.button>
+              </div>
+            )}
+            {isAdmin && (
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleCancel}
+                className="bg-red-500 text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center justify-center"
+              >
+                <IoClose className="mr-1" /> Cancel Prediction
+              </motion.button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isAdmin && isFinalized && (
+        <div className="p-4 bg-gray-50 dark:bg-navy-900 border-t border-gray-200 dark:border-navy-700">
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleDistributeRewards}
+            className="w-full bg-green-500 text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center justify-center"
+          >
+            <IoCash className="mr-1" /> Distribute Rewards
+          </motion.button>
+        </div>
+      )}
+
+      {(isFinalized || isCancelled) && !isAdmin && (
+        <div className="p-4 bg-gray-50 dark:bg-navy-900 border-t border-gray-200 dark:border-navy-700">
+          <div className="text-center text-sm font-medium text-gray-600 dark:text-gray-400">
+            {isFinalized ? 'This prediction has been finalized.' : 'This prediction has been cancelled.'}
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

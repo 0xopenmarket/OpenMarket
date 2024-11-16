@@ -1,521 +1,394 @@
 'use client'
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useReadContract, useWriteContract, useAccount, useWaitForTransactionReceipt } from 'wagmi';
 import { motion, AnimatePresence } from 'framer-motion';
-import { IoAdd, IoClose, IoBulb, IoWater, IoSearch, IoFilter, IoTrendingUp, IoGrid, IoList, IoStatsChart, IoWallet, IoTime, IoInformationCircle } from 'react-icons/io5';
-import { useReadContract, useWriteContract, useAccount } from 'wagmi';
-import { parseEther, formatEther } from 'viem';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Camera } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { IoAdd, IoClose, IoDownload, IoLink, IoRefresh, IoBulb,IoWater } from 'react-icons/io5';
+import PredictionCard from 'components/card/PredictionCard';
+import { abi } from '../../../abi';
+import { parseEther } from 'viem';
+import { baseSepolia } from 'viem/chains';
 
-const Dashboard = ({ contractAddress, abi }) => {
-  // State management
-  const [marketIds, setMarketIds] = useState([]);
-  const [filteredMarketIds, setFilteredMarketIds] = useState([]);
-  const [selectedMarket, setSelectedMarket] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [viewMode, setViewMode] = useState('grid');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('newest');
-  const [isLoading, setIsLoading] = useState(true);
+const contractAddress = '0x779d7026FA2100C97AE5E2e8381f6506D5Bf31D4';
+const PREDICTOR_ROLE = '0xfe9eaad5f5acc86dfc672d62b2c2acc0fccbdc369951a11924b882e2c44ed506';
 
-  // Mock data for price history - replace with real data
-  const priceHistory = [
-    { time: '1h', yes: 65, no: 35 },
-    { time: '2h', yes: 58, no: 42 },
-    { time: '3h', yes: 70, no: 30 },
-    { time: '4h', yes: 62, no: 38 },
-    { time: '5h', yes: 75, no: 25 }
-  ];
-
-  // Categories
-  const categories = [
-    { id: 'all', name: 'All Markets', icon: IoGrid },
-    { id: 'crypto', name: 'Crypto', icon: IoWallet },
-    { id: 'sports', name: 'Sports', icon: IoTrendingUp },
-    { id: 'politics', name: 'Politics', icon: IoTime },
-    { id: 'tech', name: 'Technology', icon: IoBulb }
-  ];
-
-  // Sort options
-  const sortOptions = [
-    { value: 'newest', label: 'Newest First' },
-    { value: 'oldest', label: 'Oldest First' },
-    { value: 'liquidity', label: 'Highest Liquidity' },
-    { value: 'volume', label: 'Highest Volume' },
-    { value: 'participants', label: 'Most Participants' }
-  ];
-
-  // Wagmi hooks
-  const { address } = useAccount();
-  const { writeContract } = useWriteContract();
-
-  // Contract reads
-  const { data: marketCount } = useReadContract({
+const usePredictionDetails = (id) => {
+  return useReadContract({
     address: contractAddress,
     abi: abi,
-    functionName: 'getMarketIds',
+    functionName: 'getPredictionDetails',
+    args: [id],
+  });
+};
+
+const Dashboard = () => {
+  const [predictionIds, setPredictionIds] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isGeneratePopupOpen, setIsGeneratePopupOpen] = useState(false);
+  const { address, isConnected } = useAccount();
+  const [isPredictorRole, setIsPredictorRole] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [topic, setTopic] = useState('');
+  const [generatedPredictions, setGeneratedPredictions] = useState([]);
+
+
+  const PRICE_FEED_IDS = {
+    'BTC/USD': '0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43',
+    'BNB/USD': '0x2f95862b045670cd22bee3114c39763a4a08beeb663b145d283c31d7d1101c4f',
+    'SOL/USD': '0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d',
+    'ETH/USD': '0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace',
+};
+
+
+  const { data: predictionCount, refetch: refetchCount } = useReadContract({
+    address: contractAddress,
+    abi: abi,
+    functionName: 'predictionCounter',
   });
 
-  // Popular markets carousel
-  const PopularMarketsCarousel = () => (
-    <div className="relative w-full mb-8">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Popular Markets</h2>
-      <div className="overflow-x-auto flex space-x-4 pb-4">
-        {filteredMarketIds.slice(0, 5).map((marketId) => (
-          <motion.div
-            key={marketId}
-            className="flex-none w-80 bg-white dark:bg-navy-800 rounded-xl shadow-lg p-4 cursor-pointer hover:shadow-xl transition-shadow"
-            whileHover={{ scale: 1.02 }}
-            onClick={() => handleMarketSelect(marketId)}
-          >
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 rounded-full bg-brand-100 dark:bg-brand-900 flex items-center justify-center">
-                <IoTrendingUp className="w-6 h-6 text-brand-500" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-1">Market #{marketId}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {formatLiquidity(marketId)} ETH Pool
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  );
+  const { data: hasPredictorRole } = useReadContract({
+    address: contractAddress,
+    abi: abi,
+    functionName: 'hasRole',
+    args: [PREDICTOR_ROLE, address],
+  });
 
-  // Market details modal
-  const MarketDetailsModal = () => (
-    <AnimatePresence>
-      {isDetailsModalOpen && selectedMarket && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 overflow-y-auto"
-        >
-          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-            <div className="fixed inset-0 transition-opacity bg-black bg-opacity-75" onClick={() => setIsDetailsModalOpen(false)} />
+  const { writeContract } = useWriteContract();
 
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="inline-block w-full max-w-4xl p-6 overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-navy-800 rounded-2xl shadow-xl"
-            >
-              {/* Market Details Content */}
-              <div className="space-y-6">
-                <div className="flex justify-between items-start">
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    Market Details #{selectedMarket}
-                  </h3>
-                  <button
-                    onClick={() => setIsDetailsModalOpen(false)}
-                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  >
-                    <IoClose size={24} />
-                  </button>
-                </div>
+  const { isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash: undefined,
+  });
 
-                {/* Price Chart */}
-                <div className="h-64 bg-white dark:bg-navy-900 rounded-xl p-4">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={priceHistory}>
-                      <XAxis dataKey="time" stroke="#9CA3AF" />
-                      <YAxis stroke="#9CA3AF" />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="yes" stroke="#10B981" strokeWidth={2} />
-                      <Line type="monotone" dataKey="no" stroke="#EF4444" strokeWidth={2} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
 
-                {/* Market Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-4">
-                    <div className="text-sm text-gray-500 dark:text-gray-400">Volume</div>
-                    <div className="text-xl font-bold text-gray-900 dark:text-white">
-                      {formatEther(BigInt(0))} ETH
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-4">
-                    <div className="text-sm text-gray-500 dark:text-gray-400">Participants</div>
-                    <div className="text-xl font-bold text-gray-900 dark:text-white">0</div>
-                  </div>
-                  <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-4">
-                    <div className="text-sm text-gray-500 dark:text-gray-400">Resolution</div>
-                    <div className="text-xl font-bold text-gray-900 dark:text-white">AI + zkTLS</div>
-                  </div>
-                </div>
-
-                {/* Trading Interface */}
-                <div className="bg-gray-50 dark:bg-navy-900 rounded-xl p-6">
-                  <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-                    Place Prediction
-                  </h4>
-                  <div className="flex gap-4">
-                    <button className="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-colors">
-                      Yes (65%)
-                    </button>
-                    <button className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors">
-                      No (35%)
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-
-  // Effects
-  useEffect(() => {
-    if (marketCount !== undefined) {
-      const count = Number(marketCount);
-      const ids = Array.from({ length: count }, (_, i) => BigInt(i));
-      setMarketIds(ids);
-      setFilteredMarketIds(ids);
-      setIsLoading(false);
+  const handleRequestFunds = async () => {
+    if (!isConnected || !address) {
+      console.error('Wallet not connected');
+      return;
     }
-  }, [marketCount]);
 
-  useEffect(() => {
-    filterMarkets();
-  }, [searchTerm, selectedCategory, sortBy, marketIds]);
-
-  // Handlers
-  const handleMarketSelect = (marketId) => {
-    setSelectedMarket(marketId);
-    setIsDetailsModalOpen(true);
+    try {
+      const response = await axios.post('https://ai-predict-fcdw.onrender.com/request-eth', { address });
+      console.log('Funds requested:', response.data);
+      // You might want to show a success message to the user here
+    } catch (error) {
+      console.error('Error requesting funds:', error);
+      // You might want to show an error message to the user here
+    }
   };
 
-  const filterMarkets = async () => {
-    let filtered = [...marketIds];
 
-    if (searchTerm) {
-      filtered = filtered.filter(id => String(id).includes(searchTerm));
+  useEffect(() => {
+    if (predictionCount) {
+      const count = Number(predictionCount);
+      setPredictionIds(Array.from({ length: count }, (_, i) => BigInt(i)));
+    }
+  }, [predictionCount]);
+
+  useEffect(() => {
+    if (hasPredictorRole !== undefined) {
+      setIsPredictorRole(!!hasPredictorRole);
+    }
+  }, [hasPredictorRole]);
+
+  const handlePredict = async (id, isYes, amount) => {
+    if (!isConnected || !address) {
+      console.error('Wallet not connected');
+      return;
     }
 
-    if (selectedCategory !== 'all') {
-      // Add category filtering logic
+    try {
+      await writeContract({
+        address: contractAddress,
+        abi: abi,
+        functionName: 'placeVotes',
+        args: [BigInt(id), isYes ? BigInt(0) : BigInt(1), BigInt(amount)],
+        value: parseEther((amount * 0.001).toString()),
+        chain: baseSepolia,
+        account: address
+      });
+    } catch (error) {
+      console.error('Error making prediction:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (isConfirmed) {
+      refetchCount();
+    }
+  }, [isConfirmed, refetchCount]);
+
+  const [newPrediction, setNewPrediction] = useState({
+    description: '',
+    duration: '',
+    minVotes: '',
+    maxVotes: '',
+    predictionType: '0',
+    optionsCount: '2',
+    tags: '',
+  });
+
+  const handleCreatePrediction = async () => {
+    if (!isConnected || !address) {
+      console.error('Wallet not connected');
+      return;
     }
 
-    // Add sorting logic
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'newest':
-          return Number(b) - Number(a);
-        case 'oldest':
-          return Number(a) - Number(b);
-        default:
-          return 0;
-      }
+    try {
+      await writeContract({
+        address: contractAddress,
+        abi: abi,
+        functionName: 'createPrediction',
+        args: [
+          newPrediction.description,
+          BigInt(newPrediction.duration),
+          BigInt(newPrediction.minVotes),
+          BigInt(newPrediction.maxVotes),
+          parseInt(newPrediction.predictionType),
+          BigInt(newPrediction.optionsCount),
+          newPrediction.tags.split(',').map(tag => tag.trim())
+        ],
+        chain: baseSepolia,
+        account: address
+      });
+      setIsModalOpen(false);
+      setNewPrediction({
+        description: '',
+        duration: '',
+        minVotes: '',
+        maxVotes: '',
+        predictionType: '0',
+        optionsCount: '2',
+        tags: '',
+      });
+    } catch (error) {
+      console.error('Error creating prediction:', error);
+    }
+  };
+
+  const handleGeneratePredictions = async () => {
+    setIsGenerating(true);
+    try {
+      const response = await axios.post('https://ai-predict-fcdw.onrender.com/test/generate-predictions', { topic });
+      setGeneratedPredictions(response.data.predictions);
+      setIsGeneratePopupOpen(true);
+    } catch (error) {
+      console.error('Error generating predictions:', error);
+    }
+    setIsGenerating(false);
+  };
+
+  const handleSelectPrediction = (prediction) => {
+    setNewPrediction({
+      description: prediction.description,
+      duration: prediction.duration.toString(),
+      minVotes: prediction.minVotes.toString(),
+      maxVotes: prediction.maxVotes.toString(),
+      predictionType: prediction.predictionType.toString(),
+      optionsCount: prediction.optionsCount.toString(),
+      tags: prediction.tags.join(', '),
     });
-
-    setFilteredMarketIds(filtered);
+    setIsGeneratePopupOpen(false);
+    setIsModalOpen(true);
   };
 
-  const formatLiquidity = (marketId) => {
-    // Add liquidity formatting logic
-    return "0.00";
+  const handleFinalizeWithAI = async (predictionId) => {
+    try {
+      const response = await axios.post(`https://ai-predict-fcdw.onrender.com/finalize-prediction/${predictionId}`);
+      console.log('Prediction finalized with AI:', response.data);
+      // You might want to update the UI or refetch the predictions here
+    } catch (error) {
+      console.error('Error finalizing prediction with AI:', error);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-navy-900">
-      {/* Header */}
-      <div className="bg-white dark:bg-navy-800 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                OpenMarket
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                AI & zkTLS Powered Prediction Markets
-              </p>
-            </div>
+    <div className="p-4 md:p-6 lg:p-8">
+      <div className="flex justify-between items-center mb-6">
 
-            <div className="flex flex-wrap gap-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="bg-blue-500 hover:bg-blue-600 text-white rounded-lg px-4 py-2 flex items-center space-x-2"
-              >
-                <IoWater className="w-5 h-5" />
-                <span>Get Test Tokens</span>
-              </motion.button>
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setIsModalOpen(true)}
-                className="bg-brand-500 hover:bg-brand-600 text-white rounded-lg px-4 py-2 flex items-center space-x-2"
-              >
-                <IoAdd className="w-5 h-5" />
-                <span>Create Market</span>
-              </motion.button>
-            </div>
-          </div>
-        </div>
+      <div className="flex flex-col space-y-4 mb-6">
+  <h1 className="text-2xl font-bold text-navy-700 dark:text-white">Prediction Dashboard</h1>
+  <div className="flex flex-wrap gap-2">
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={handleRequestFunds}
+      className="bg-blue-400 text-white rounded-lg py-2 px-3 text-sm flex items-center justify-center flex-1 sm:flex-none"
+    >
+      <IoWater className="mr-1" /> Request Funds
+    </motion.button>
+    {isPredictorRole && (
+      <>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setIsModalOpen(true)}
+          className="bg-brand-500 text-white rounded-lg py-2 px-3 text-sm flex items-center justify-center flex-1 sm:flex-none"
+        >
+          <IoAdd className="mr-1" /> Create
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setIsGeneratePopupOpen(true)}
+          className="bg-purple-500 text-white rounded-lg py-2 px-3 text-sm flex items-center justify-center flex-1 sm:flex-none"
+        >
+          <IoBulb className="mr-1" /> Generate
+        </motion.button>
+      </>
+    )}
+  </div>
+</div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {predictionIds.map((id) => (
+          <PredictionCard
+            key={Number(id)}
+            predictionId={id}
+            usePredictionDetails={usePredictionDetails}
+            onPredict={handlePredict}
+            contractAddress={contractAddress}
+            abi={abi}
+          />
+        ))}
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Popular Markets */}
-        <PopularMarketsCarousel />
-
-        {/* Search and Filters */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="relative flex-grow">
-            <IoSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search markets..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-navy-600 bg-white dark:bg-navy-800 text-gray-700 dark:text-gray-300"
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-2 rounded-lg border border-gray-200 dark:border-navy-600 bg-white dark:bg-navy-800 text-gray-700 dark:text-gray-300"
-            >
-              {sortOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-
-            <button
-              onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-              className="p-2 rounded-lg border border-gray-200 dark:border-navy-600 bg-white dark:bg-navy-800 text-gray-700 dark:text-gray-300"
-            >
-              {viewMode === 'grid' ? <IoGrid size={20} /> : <IoList size={20} />}
-            </button>
-          </div>
-        </div>
-
-        {/* Categories */}
-        <div className="flex gap-2 overflow-x-auto pb-4">
-          {categories.map((category) => {
-            const Icon = category.icon;
-            return (
-              <motion.button
-                key={category.id}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setSelectedCategory(category.id)}
-                className={`px-4 py-2 rounded-lg flex items-center space-x-2 whitespace-nowrap ${
-                  selectedCategory === category.id
-                    ? 'bg-brand-500 text-white' : 'bg-white dark:bg-navy-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-navy-600'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{category.name}</span>
-                </motion.button>
-              );
-            })}
-          </div>
-  
-          {/* Markets Grid/List */}
-          {isLoading ? (
-            <div className={`grid gap-6 ${
-              viewMode === 'grid' 
-                ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' 
-                : 'grid-cols-1'
-            }`}>
-              {[...Array(6)].map((_, i) => (
-                <div 
-                  key={i} 
-                  className="animate-pulse bg-white dark:bg-navy-800 rounded-xl h-96"
-                />
-              ))}
-            </div>
-          ) : filteredMarketIds.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600 dark:text-gray-400">
-                No markets found matching your criteria
-              </p>
-            </div>
-          ) : (
-            <div className={`grid gap-6 ${
-              viewMode === 'grid' 
-                ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' 
-                : 'grid-cols-1'
-            }`}>
-              {filteredMarketIds.map((id) => (
-                <motion.div
-                  key={id.toString()}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-white dark:bg-navy-800 rounded-xl shadow-lg overflow-hidden"
-                >
-                  <div className="p-6 space-y-4">
-                    <div className="flex justify-between items-start">
-                      <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                        Market #{id.toString()}
-                      </h3>
-                      <button
-                        onClick={() => handleMarketSelect(id)}
-                        className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                      >
-                        <IoInformationCircle size={24} />
-                      </button>
-                    </div>
-  
-                    {/* Market Stats */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-gray-50 dark:bg-navy-900 rounded-lg p-3">
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          Time Left
-                        </div>
-                        <div className="text-gray-900 dark:text-white font-medium">
-                          24h 30m
-                        </div>
-                      </div>
-                      <div className="bg-gray-50 dark:bg-navy-900 rounded-lg p-3">
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          Pool Size
-                        </div>
-                        <div className="text-gray-900 dark:text-white font-medium">
-                          {formatLiquidity(id)} ETH
-                        </div>
-                      </div>
-                    </div>
-  
-                    {/* Prediction Controls */}
-                    <div className="space-y-4">
-                      <div className="relative h-2 bg-gray-200 dark:bg-navy-900 rounded-full overflow-hidden">
-                        <div className="absolute left-0 top-0 h-full bg-green-500" style={{ width: '65%' }} />
-                        <div className="absolute right-0 top-0 h-full bg-red-500" style={{ width: '35%' }} />
-                      </div>
-                      <div className="flex justify-between text-sm font-medium">
-                        <span className="text-green-500">Yes (65%)</span>
-                        <span className="text-red-500">No (35%)</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <button className="flex-1 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors">
-                          Yes
-                        </button>
-                        <button className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors">
-                          No
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-  
-          {/* Market Details Modal */}
-          <MarketDetailsModal />
-  
-          {/* Create Market Modal */}
-          <AnimatePresence>
-            {isModalOpen && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center"
-              >
-                <motion.div
-                  initial={{ scale: 0.95, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.95, opacity: 0 }}
-                  className="relative bg-white dark:bg-navy-800 rounded-xl max-w-lg w-full m-4 p-6 shadow-xl"
-                >
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                      Create New Market
-                    </h2>
-                    <button
-                      onClick={() => setIsModalOpen(false)}
-                      className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                    >
-                      <IoClose size={24} />
-                    </button>
-                  </div>
-  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Description
-                      </label>
-                      <textarea
-                        placeholder="What do you want to predict?"
-                        className="w-full px-3 py-2 bg-white dark:bg-navy-900 border border-gray-300 dark:border-navy-600 rounded-lg text-gray-900 dark:text-white"
-                        rows={3}
-                      />
-                    </div>
-  
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Category
-                      </label>
-                      <select className="w-full px-3 py-2 bg-white dark:bg-navy-900 border border-gray-300 dark:border-navy-600 rounded-lg text-gray-900 dark:text-white">
-                        {categories.map(category => (
-                          <option key={category.id} value={category.id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-  
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        End Date
-                      </label>
-                      <input
-                        type="datetime-local"
-                        className="w-full px-3 py-2 bg-white dark:bg-navy-900 border border-gray-300 dark:border-navy-600 rounded-lg text-gray-900 dark:text-white"
-                      />
-                    </div>
-  
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Initial Liquidity (ETH)
-                      </label>
-                      <input
-                        type="number"
-                        min="0.001"
-                        step="0.001"
-                        className="w-full px-3 py-2 bg-white dark:bg-navy-900 border border-gray-300 dark:border-navy-600 rounded-lg text-gray-900 dark:text-white"
-                      />
-                    </div>
-  
-                    <button className="w-full py-3 bg-brand-500 hover:bg-brand-600 text-white rounded-lg font-medium transition-colors">
-                      Create Market
-                    </button>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-  
-          {/* Quick Actions Floating Button */}
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="fixed bottom-4 right-4 w-12 h-12 bg-brand-500 text-white rounded-full shadow-lg flex items-center justify-center"
-            onClick={() => setIsModalOpen(true)}
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
           >
-            <IoAdd size={24} />
-          </motion.button>
-        </div>
-      </div>
-    );
-  };
-  
-  export default Dashboard;
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-navy-800 rounded-lg p-6 w-full max-w-lg"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-navy-700 dark:text-white">Create New Prediction</h2>
+                <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                  <IoClose size={24} />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  value={newPrediction.description}
+                  onChange={(e) => setNewPrediction({...newPrediction, description: e.target.value})}
+                  placeholder="Description"
+                  className="w-full p-2 border rounded dark:bg-navy-700 dark:text-white dark:border-navy-600"
+                />
+                <input
+                  type="number"
+                  value={newPrediction.duration}
+                  onChange={(e) => setNewPrediction({...newPrediction, duration: e.target.value})}
+                  placeholder="Duration (seconds)"
+                  className="w-full p-2 border rounded dark:bg-navy-700 dark:text-white dark:border-navy-600"
+                />
+                <input
+                  type="number"
+                  value={newPrediction.minVotes}
+                  onChange={(e) => setNewPrediction({...newPrediction, minVotes: e.target.value})}
+                  placeholder="Min Votes"
+                  className="w-full p-2 border rounded dark:bg-navy-700 dark:text-white dark:border-navy-600"
+                />
+                <input
+                  type="number"
+                  value={newPrediction.maxVotes}
+                  onChange={(e) => setNewPrediction({...newPrediction, maxVotes: e.target.value})}
+                  placeholder="Max Votes"
+                  className="w-full p-2 border rounded dark:bg-navy-700 dark:text-white dark:border-navy-600"
+                />
+                <select
+                  value={newPrediction.predictionType}
+                  onChange={(e) => setNewPrediction({...newPrediction, predictionType: e.target.value})}
+                  className="w-full p-2 border rounded dark:bg-navy-700 dark:text-white dark:border-navy-600"
+                >
+                  <option value="0">Binary</option>
+                  <option value="1">Multiple Choice</option>
+                  <option value="2">Range</option>
+                  
+                </select>
+                <input
+                  type="number"
+                  value={newPrediction.optionsCount}
+                  onChange={(e) => setNewPrediction({...newPrediction, optionsCount: e.target.value})}
+                  placeholder="Options Count"
+                  className="w-full p-2 border rounded dark:bg-navy-700 dark:text-white dark:border-navy-600"
+                />
+                <input
+                  type="text"
+                  value={newPrediction.tags}
+                  onChange={(e) => setNewPrediction({...newPrediction, tags: e.target.value})}
+                  placeholder="Tags (comma-separated)"
+                  className="w-full p-2 border rounded dark:bg-navy-700 dark:text-white dark:border-navy-600"
+                />
+                <button
+                  onClick={handleCreatePrediction}
+                  className="w-full bg-brand-500 text-white rounded-lg py-2 px-4 hover:bg-brand-600 transition-colors"
+                >
+                  Create Prediction
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {isGeneratePopupOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-navy-800 rounded-lg p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-navy-700 dark:text-white">Generate AI Predictions</h2>
+                <button onClick={() => setIsGeneratePopupOpen(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                  <IoClose size={24} />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  placeholder="Enter a topic for predictions"
+                  className="w-full p-2 border rounded dark:bg-navy-700 dark:text-white dark:border-navy-600"
+                />
+                <button
+                  onClick={handleGeneratePredictions}
+                  disabled={isGenerating}
+                  className="w-full bg-purple-500 text-white rounded-lg py-2 px-4 hover:bg-purple-600 transition-colors"
+                >
+                  {isGenerating ? 'Generating...' : 'Generate Predictions'}
+                </button>
+                {generatedPredictions.map((prediction, index) => (
+                  <motion.div
+                    key={index}
+                    whileHover={{ scale: 1.02 }}
+                    className="bg-gray-100 dark:bg-navy-700 p-4 rounded-lg cursor-pointer"
+                    onClick={() => handleSelectPrediction(prediction)}
+                  >
+                    <h3 className="font-bold text-navy-700 dark:text-white mb-2">{prediction.description}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Duration: {prediction.duration} seconds</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Tags: {prediction.tags.join(', ')}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export default Dashboard;
