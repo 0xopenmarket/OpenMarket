@@ -64,7 +64,7 @@ const NavBar = ({ isMobile }) => {
         className="fixed top-0 left-0 right-0 bg-white/10 backdrop-blur-xl p-2 shadow-lg dark:bg-[#0b14374d] z-50"
       >
         <div className="flex justify-between items-center">
-          <span className="text-white font-bold text-xl">OpenMarkets.AI</span>
+          <span className="text-navy-600 font-bold text-xl">OpenMarkets.AI</span>
           <div className="flex items-center space-x-2">
             {!isMobile && <NavContent position="top" />}
             <DynamicWidget />
