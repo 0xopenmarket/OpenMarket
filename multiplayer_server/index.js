@@ -12,14 +12,14 @@ const server = http.createServer(app);
 
 // CORS setup
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+      origin: '*',
   methods: ['GET', 'POST'],
   credentials: true
 }));
 
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    origin: '*',
     methods: ['GET', 'POST'],
     credentials: true
   },
